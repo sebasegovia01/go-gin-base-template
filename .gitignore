@@ -1,0 +1,59 @@
+ Binarios para programas y plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Archivos de prueba
+*.test
+
+# Archivos de salida de cobertura de Go
+*.out
+
+# Directorio de dependencias (remove el comentario de abajo para incluirlo)
+# vendor/
+
+# Archivos y carpetas específicos de IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de log
+*.log
+
+# Archivos de respaldo
+*.bak
+
+# Archivos de configuración local
+*.env
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
+
+# Directorio de compilación
+/bin/
+/dist/
+
+# Archivos temporales
+/tmp/
+*.tmp
+
+# Archivos de caché de Go
+*.sum
+
+# Si usas Go modules, puedes descomentar la siguiente línea
+# go.sum
+
+# Archivos específicos de tu aplicación (ajusta según sea necesario)
+# config.yaml
+# secrets.json
+
+.env
