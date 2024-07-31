@@ -5,18 +5,25 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/sebasegovia01/base-template-go-gin/enums"
 )
 
 type Config struct {
 	DatabaseURL   string
 	ServerAddress string
+	Environment   enums.Environment
 }
 
 func Load() (*Config, error) {
-	// Cargar variables de entorno desde el archivo .env
-	err := godotenv.Load()
-	if err != nil {
-		return nil, fmt.Errorf("error loading .env file: %w", err)
+
+	env := enums.Environment(os.Getenv("ENV"))
+
+	// Verificar si estamos en un entorno de desarrollo
+	if env != enums.Prod {
+		err := godotenv.Load()
+		if err != nil {
+			return nil, fmt.Errorf("error loading .env file: %w", err)
+		}
 	}
 
 	// Construir la URL de la base de datos
@@ -30,6 +37,7 @@ func Load() (*Config, error) {
 
 	return &Config{
 		DatabaseURL:   dbURL,
-		ServerAddress: os.Getenv("SERVER_ADDRESS"),
+		ServerAddress: os.Getenv("PORT"),
+		Environment:   env,
 	}, nil
 }

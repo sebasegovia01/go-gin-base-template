@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sebasegovia01/base-template-go-gin/config"
+	"github.com/sebasegovia01/base-template-go-gin/enums"
 	"github.com/sebasegovia01/base-template-go-gin/routes"
 )
 
@@ -33,6 +34,12 @@ func main() {
 	if serverAddress == "" {
 		serverAddress = ":8080" // Puerto por defecto si no se especifica
 	}
-	log.Printf("Server starting on %s", serverAddress)
+
+	environment := cfg.Environment
+	if environment == "" {
+		environment = enums.Dev // env por defecto
+	}
+
+	log.Printf("Server starting on port %s, environment is %s", serverAddress, environment)
 	r.Run(serverAddress)
 }

@@ -1,0 +1,56 @@
+# Ignorar el archivo .env
+.env
+
+# Archivos y directorios de Git
+.git
+.gitignore
+
+# Directorios y archivos de compilación de Go
+/bin/
+/vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Archivos de prueba
+*.test
+
+# Archivos de salida de cobertura
+*.out
+
+# Directorios y archivos de dependencias
+/vendor/
+
+# Archivos y directorios específicos de IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de log
+*.log
+
+# Archivos temporales
+/tmp/
+*.tmp
+
+# Archivos README y de documentación
+README.md
+docs/
+
+# Archivos de configuración local (excluyendo .env que ya está ignorado arriba)
+*.local
+
+# Dockerfile (si no quieres incluirlo en el contexto de construcción)
+Dockerfile
+
+# Otros archivos y directorios específicos de tu proyecto (ajusta según sea necesario)
+# config.yaml
+# secrets.json
