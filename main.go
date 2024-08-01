@@ -2,11 +2,13 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sebasegovia01/base-template-go-gin/config"
 	"github.com/sebasegovia01/base-template-go-gin/enums"
 	"github.com/sebasegovia01/base-template-go-gin/routes"
+	"github.com/sebasegovia01/base-template-go-gin/services"
 )
 
 func main() {
@@ -23,6 +25,23 @@ func main() {
 	}
 	defer db.Close()
 
+	// Inicializar servicio PubSub
+	pubsubService, err := services.NewPubSubService(cfg)
+	if err != nil {
+		log.Printf("Error initializing PubSub service: %v", err)
+		// Cerrar la conexión de la base de datos antes de salir
+		db.Close()
+		os.Exit(1)
+	}
+	defer pubsubService.Close()
+
+	// Iniciar la recepción de mensajes en una goroutine
+	go func() {
+		if err := pubsubService.ReceiveMessages(); err != nil {
+			log.Printf("Error in PubSub message receiving: %v", err)
+			// Aquí podrías implementar una lógica para reintentar o notificar
+		}
+	}()
 	// Inicializar router
 	r := gin.Default()
 

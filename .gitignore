@@ -55,3 +55,4 @@ Thumbs.db
 # Archivos específicos de tu aplicación (ajusta según sea necesario)
 # config.yaml
 # secrets.json
+pubsub-creds.json
