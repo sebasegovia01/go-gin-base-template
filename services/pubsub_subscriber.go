@@ -14,13 +14,12 @@ import (
 )
 
 type PubSubService struct {
-	client       *pubsub.Client
-	subscription *pubsub.Subscription
-	projectID    string
-	subID        string
+	client         *pubsub.Client
+	subscription   *pubsub.Subscription
+	storageService *StorageService
 }
 
-func NewPubSubService(cfg *config.Config) (*PubSubService, error) {
+func NewPubSubService(cfg *config.Config, storageService *StorageService) (*PubSubService, error) {
 	ctx := context.Background()
 
 	client, err := createPubSubClient(ctx, cfg.GCPProjectID, cfg.GCPCredentials)
@@ -37,10 +36,9 @@ func NewPubSubService(cfg *config.Config) (*PubSubService, error) {
 	log.Printf("Successfully initialized PubSub service for project %s and subscription %s", cfg.GCPProjectID, cfg.GCPSubID)
 
 	return &PubSubService{
-		client:       client,
-		subscription: subscription,
-		projectID:    cfg.GCPProjectID,
-		subID:        cfg.GCPSubID,
+		client:         client,
+		subscription:   subscription,
+		storageService: storageService,
 	}, nil
 }
 
@@ -82,9 +80,40 @@ func (s *PubSubService) ReceiveMessages() error {
 	ctx := context.Background()
 	var receivedCount int64
 
+	log.Printf("Starting to receive messages...")
+
 	err := s.subscription.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
-		atomic.AddInt64(&receivedCount, 1)
-		log.Printf("Received message: ID=%s, Data=%s", msg.ID, string(msg.Data))
+		newCount := atomic.AddInt64(&receivedCount, 1)
+		log.Printf("Received message: ID=%s", msg.ID)
+		log.Printf("Total messages received: %d", newCount)
+
+		var storageEvent map[string]interface{}
+		if err := json.Unmarshal(msg.Data, &storageEvent); err != nil {
+			log.Printf("Error unmarshalling message: %v", err)
+			msg.Nack()
+			return
+		}
+
+		bucketName, ok := storageEvent["bucket"].(string)
+		if !ok {
+			log.Printf("Bucket name not found in message")
+			msg.Nack()
+			return
+		}
+
+		objectName, ok := storageEvent["name"].(string)
+		if !ok {
+			log.Printf("Object name not found in message")
+			msg.Nack()
+			return
+		}
+
+		if err := s.storageService.ProcessFile(bucketName, objectName); err != nil {
+			log.Printf("Error processing file: %v", err)
+			msg.Nack()
+			return
+		}
+
 		msg.Ack()
 	})
 
@@ -92,7 +121,6 @@ func (s *PubSubService) ReceiveMessages() error {
 		return fmt.Errorf("error receiving messages: %w", err)
 	}
 
-	log.Printf("Total messages received: %d", receivedCount)
 	return nil
 }
 

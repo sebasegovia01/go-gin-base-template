@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sebasegovia01/base-template-go-gin/config"
 	"github.com/sebasegovia01/base-template-go-gin/enums"
+	"github.com/sebasegovia01/base-template-go-gin/repositories"
 	"github.com/sebasegovia01/base-template-go-gin/routes"
 	"github.com/sebasegovia01/base-template-go-gin/services"
 )
@@ -25,8 +26,21 @@ func main() {
 	}
 	defer db.Close()
 
+	// Inicializar repositorio ATM
+	atmRepo := repositories.NewATMRepository(db)
+
+	// Inicializar servicio ATM
+	atmService := services.NewATMService(atmRepo)
+
+	// Inicializar servicio Storage
+	storageService, err := services.NewStorageService(cfg, atmService)
+	if err != nil {
+		log.Fatalf("Error initializing Storage service: %v", err)
+	}
+	defer storageService.Close()
+
 	// Inicializar servicio PubSub
-	pubsubService, err := services.NewPubSubService(cfg)
+	pubsubService, err := services.NewPubSubService(cfg, storageService)
 	if err != nil {
 		log.Printf("Error initializing PubSub service: %v", err)
 		// Cerrar la conexión de la base de datos antes de salir
