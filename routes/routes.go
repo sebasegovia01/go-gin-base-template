@@ -11,6 +11,11 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, db *sql.DB) {
+	// Health check route
+	healthController := controllers.NewHealthController()
+	r.GET("/health", healthController.HealthCheck)
+
+	// ATM routes
 	atmRepo := repositories.NewATMRepository(db)
 	atmService := services.NewATMService(atmRepo)
 	atmController := controllers.NewATMController(atmService)
