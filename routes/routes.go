@@ -12,7 +12,7 @@ import (
 
 func SetupRoutes(r *gin.Engine, db *sql.DB) {
 
-	api := r.Group("/api")
+	api := r.Group("/service-channels/v1/api")
 
 	// Health check route
 	healthController := controllers.NewHealthController()
