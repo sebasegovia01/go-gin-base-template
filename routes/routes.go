@@ -4,7 +4,6 @@ import (
 	"database/sql"
 
 	"github.com/sebasegovia01/base-template-go-gin/controllers"
-	"github.com/sebasegovia01/base-template-go-gin/repositories"
 	"github.com/sebasegovia01/base-template-go-gin/services"
 
 	"github.com/gin-gonic/gin"
@@ -18,10 +17,8 @@ func SetupRoutes(r *gin.Engine, db *sql.DB) {
 	healthController := controllers.NewHealthController()
 	api.GET("/health", healthController.HealthCheck)
 
-	// ATM routes
-	atmRepo := repositories.NewATMRepository(db)
-	atmService := services.NewATMService(atmRepo)
-	atmController := controllers.NewATMController(atmService)
+	alloyDbService := services.NewAlloyDB(db)
+	atmController := controllers.NewATMController(alloyDbService)
 	{
 		atms := api.Group("/atms")
 		{
