@@ -29,7 +29,9 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery()) // recovery from panic, keep server running
-	r.Use(middleware.ErrorHandler())
+
+	// middlewares
+	r.Use(middleware.ResponseWrapperMiddleware())
 
 	// Configurar manejador para rutas no encontradas
 	r.NoRoute(func(c *gin.Context) {
