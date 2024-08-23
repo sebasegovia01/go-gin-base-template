@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/sebasegovia01/base-template-go-gin/errors"
 	"github.com/sebasegovia01/base-template-go-gin/models"
 	"github.com/sebasegovia01/base-template-go-gin/services"
 
@@ -21,7 +22,7 @@ func NewATMController(service *services.AlloyDbService) *ATMController {
 func (c *ATMController) Create(ctx *gin.Context) {
 	var atm models.ATM
 	if err := ctx.ShouldBindJSON(&atm); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.Error(err)
 		return
 	}
 
@@ -45,12 +46,12 @@ func (c *ATMController) Create(ctx *gin.Context) {
 
 	results, err := c.service.ExecuteQuery(query, params, true)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.Error(err)
 		return
 	}
 
 	if len(results) == 0 {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create ATM"})
+		ctx.Error(errors.NewCustomError(http.StatusBadRequest, "failed to create ATM"))
 		return
 	}
 
@@ -65,7 +66,7 @@ func (c *ATMController) GetAll(ctx *gin.Context) {
 
 	results, err := c.service.ExecuteQuery(query, nil, true)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.Error(err)
 		return
 	}
 
@@ -82,12 +83,12 @@ func (c *ATMController) GetByID(ctx *gin.Context) {
 
 	results, err := c.service.ExecuteQuery(query, params, true)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.Error(err)
 		return
 	}
 
 	if len(results) == 0 {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "ATM not found"})
+		ctx.Error(errors.NewCustomError(http.StatusNotFound, "ATM not found"))
 		return
 	}
 
@@ -98,7 +99,7 @@ func (c *ATMController) Update(ctx *gin.Context) {
 	id, _ := strconv.Atoi(ctx.Param("id"))
 	var atm models.ATM
 	if err := ctx.ShouldBindJSON(&atm); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.Error(err)
 		return
 	}
 
@@ -122,12 +123,12 @@ func (c *ATMController) Update(ctx *gin.Context) {
 
 	results, err := c.service.ExecuteQuery(query, params, true)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.Error(err)
 		return
 	}
 
 	if len(results) == 0 {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "ATM not found"})
+		ctx.Error(errors.NewCustomError(http.StatusNotFound, "ATM not found"))
 		return
 	}
 
@@ -141,7 +142,7 @@ func (c *ATMController) Delete(ctx *gin.Context) {
 
 	_, err := c.service.ExecuteQuery(query, params, false)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.Error(err)
 		return
 	}
 

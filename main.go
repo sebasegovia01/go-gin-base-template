@@ -2,10 +2,12 @@ package main
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sebasegovia01/base-template-go-gin/config"
 	"github.com/sebasegovia01/base-template-go-gin/enums"
+	"github.com/sebasegovia01/base-template-go-gin/middleware"
 	"github.com/sebasegovia01/base-template-go-gin/routes"
 )
 
@@ -23,8 +25,16 @@ func main() {
 	}
 	defer db.Close()
 
-	// Inicializar router
-	r := gin.Default()
+	// Init go gin
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery()) // recovery from panic, keep server running
+	r.Use(middleware.ErrorHandler())
+
+	// Configurar manejador para rutas no encontradas
+	r.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
+	})
 
 	// Configurar rutas
 	routes.SetupRoutes(r, db)
