@@ -26,5 +26,6 @@ type SourceError struct {
 }
 
 type ErrorSourceDetails struct {
-	Source string `json:"source"`
+	Source         string   `json:"source"`
+	MissingHeaders []string `json:"missingHeaders,omitempty"`
 }

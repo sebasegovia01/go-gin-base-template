@@ -47,6 +47,13 @@ func ResponseWrapperMiddleware() gin.HandlerFunc {
 				log.Println("Handling CustomError")
 				statusCode = customErr.StatusCode
 				errorResponse = createErrorResponse(statusCode, customErr.Message)
+
+				// Special handling for missing headers
+				if strings.Contains(customErr.Message, "Missing required headers") {
+					missingHeaders := strings.TrimPrefix(customErr.Message, "Missing required headers: ")
+					errorResponse.Result.SourceError.Description = "Missing required headers"
+					errorResponse.Result.SourceError.ErrorSourceDetails.MissingHeaders = strings.Split(missingHeaders, ", ")
+				}
 			} else {
 				log.Println("Handling standard error")
 				statusCode = http.StatusInternalServerError
