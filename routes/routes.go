@@ -1,33 +1,25 @@
 package routes
 
 import (
-	"database/sql"
-
 	"github.com/sebasegovia01/base-template-go-gin/controllers"
 	"github.com/sebasegovia01/base-template-go-gin/middleware"
-	"github.com/sebasegovia01/base-template-go-gin/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(r *gin.Engine, db *sql.DB) {
+func SetupRoutes(r *gin.Engine, dataCustomerController *controllers.DataCustomerController) {
 
-	api := r.Group("/service-channels/v1/api")
+	api := r.Group("/customer-data-retrieval/v1/api")
 
 	// Health check route
 	healthController := controllers.NewHealthController()
 	api.GET("/health", healthController.HealthCheck)
 
-	alloyDbService := services.NewAlloyDB(db)
-	atmController := controllers.NewATMController(alloyDbService)
+	// Customer route
 	{
-		atms := api.Group("/atms")
+		customers := api.Group("/customers")
 		{
-			atms.POST("/", WithTraceability(atmController.Create))
-			atms.GET("/", WithTraceability(atmController.GetAll))
-			atms.GET("/:id", WithTraceability(atmController.GetByID))
-			atms.PUT("/:id", WithTraceability(atmController.Update))
-			atms.DELETE("/:id", WithTraceability(atmController.Delete))
+			customers.POST("/retrieve", dataCustomerController.HandlePushMessage)
 		}
 	}
 }

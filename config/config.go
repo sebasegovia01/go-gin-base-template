@@ -1,17 +1,22 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/sebasegovia01/base-template-go-gin/enums"
+	"golang.org/x/oauth2/google"
 )
 
 type Config struct {
-	DatabaseURL   string
-	ServerAddress string
-	Environment   enums.Environment
+	ServerAddress  string
+	Environment    enums.Environment
+	Topics         []string
+	BucketName     string
+	GCPCredentials *google.Credentials
 }
 
 func Load() (*Config, error) {
@@ -26,18 +31,33 @@ func Load() (*Config, error) {
 		}
 	}
 
-	// Construir la URL de la base de datos
-	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		os.Getenv("DB_USERNAME"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"),
-	)
+	// Obtener los tópicos y dividirlos en un slice
+	topicsString := os.Getenv("PUBSUB_TOPICS")
+	topics := strings.Split(topicsString, ",")
+
+	// Trim espacios en blanco de cada tópico
+	for i, topic := range topics {
+		topics[i] = strings.TrimSpace(topic)
+	}
+
+	bucketName := os.Getenv("BUCKET_NAME")
+
+	// Manejar las credenciales de GCP
+	var gcpCreds *google.Credentials
+	gcpCredsJSON := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+	if gcpCredsJSON != "" {
+		var err error
+		gcpCreds, err = google.CredentialsFromJSON(context.Background(), []byte(gcpCredsJSON))
+		if err != nil {
+			return nil, fmt.Errorf("error parsing GCP credentials JSON: %w", err)
+		}
+	}
 
 	return &Config{
-		DatabaseURL:   dbURL,
-		ServerAddress: os.Getenv("PORT"),
-		Environment:   env,
+		ServerAddress:  os.Getenv("PORT"),
+		Environment:    env,
+		Topics:         topics,
+		BucketName:     bucketName,
+		GCPCredentials: gcpCreds,
 	}, nil
 }
