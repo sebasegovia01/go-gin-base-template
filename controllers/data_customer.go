@@ -60,7 +60,6 @@ func (c *DataCustomerController) HandlePushMessage(ctx *gin.Context) {
 			continue
 		}
 
-		// Usar CustomMarshalJSON para serializar el Customer
 		customerJSON, err := utils.CustomMarshalJSON(transformedCustomer)
 		if err != nil {
 			log.Printf("Error marshaling customer data: %v", err)

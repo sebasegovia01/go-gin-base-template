@@ -4,6 +4,7 @@ import "time"
 
 // PersonalCustomerIdentification representa la información de identificación de un cliente personal
 type PersonalCustomerIdentification struct {
+	CustomerIdentification string    `json:"customerIdentification"`
 	CustomerFirstName      string    `json:"customerFirstName"`
 	CustomerMiddleName     string    `json:"customerMiddleName"`
 	CustomerLastName       string    `json:"customerLastName"`
@@ -57,6 +58,6 @@ type LegalEntityAdditionalInfo struct {
 type Customer struct {
 	PersonalIdentification    PersonalCustomerIdentification `json:"personalIdentification"`
 	PersonalAdditionalInfo    PersonalCustomerAdditionalInfo `json:"personalAdditionalInfo"`
-	LegalEntityIdentification LegalEntityIdentification      `json:"legalEntityIdentification"`
-	LegalEntityAdditionalInfo LegalEntityAdditionalInfo      `json:"legalEntityAdditionalInfo"`
+	LegalEntityIdentification LegalEntityIdentification      `json:"legalEntityIdentification,omitempty"`
+	LegalEntityAdditionalInfo LegalEntityAdditionalInfo      `json:"legalEntityAdditionalInfo,omitempty"`
 }
