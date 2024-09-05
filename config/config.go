@@ -77,6 +77,7 @@ func Load() (*Config, error) {
 }
 
 func loadFromEnvironments() error {
+	// Define in cloud run this name for secrets!
 	environmentsContent := os.Getenv("ENVIRONMENTS")
 
 	if environmentsContent == "" {
