@@ -11,6 +11,9 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/config"
 )
 
+type PubSubServiceInterface interface {
+	ExtractStorageEvent(body io.Reader) (*StorageEvent, error)
+}
 type PubSubService struct {
 	cfg *config.Config
 }
@@ -41,7 +44,7 @@ func NewPubSubService(cfg *config.Config) (*PubSubService, error) {
 	}, nil
 }
 
-func (s *PubSubService) ExtractStorageEvent(body io.ReadCloser) (*StorageEvent, error) {
+func (s *PubSubService) ExtractStorageEvent(body io.Reader) (*StorageEvent, error) {
 	bodyBytes, err := io.ReadAll(body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading request body: %w", err)
@@ -71,7 +74,6 @@ func (s *PubSubService) ExtractStorageEvent(body io.ReadCloser) (*StorageEvent, 
 		return nil, fmt.Errorf("error unmarshalling storage event data: %w", err)
 	}
 
-	// Decodificar el nombre del objeto
 	decodedName, err := url.QueryUnescape(storageEvent.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding object name: %w", err)

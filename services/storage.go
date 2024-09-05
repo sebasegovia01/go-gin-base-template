@@ -13,6 +13,10 @@ import (
 	"google.golang.org/api/option"
 )
 
+type StorageServiceInterface interface {
+	ProcessFile(filename string) ([]map[string]interface{}, error)
+}
+
 type StorageService struct {
 	client     *storage.Client
 	bucketName string

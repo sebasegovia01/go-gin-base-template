@@ -13,13 +13,16 @@ import (
 )
 
 type DataCustomerController struct {
-	pubSubService        *services.PubSubService
-	storageService       *services.StorageService
-	pubSubPublishService *services.PubSubPublishService
+	pubSubService        services.PubSubServiceInterface
+	storageService       services.StorageServiceInterface
+	pubSubPublishService services.PubSubPublishServiceInterface
 }
 
-func NewDataCustomerController(pubSubService *services.PubSubService, storageService *services.StorageService,
-	pubSubPublishService *services.PubSubPublishService) *DataCustomerController {
+func NewDataCustomerController(
+	pubSubService services.PubSubServiceInterface,
+	storageService services.StorageServiceInterface,
+	pubSubPublishService services.PubSubPublishServiceInterface,
+) *DataCustomerController {
 	return &DataCustomerController{
 		pubSubService:        pubSubService,
 		storageService:       storageService,
@@ -27,8 +30,10 @@ func NewDataCustomerController(pubSubService *services.PubSubService, storageSer
 	}
 }
 
-func (c *DataCustomerController) HandlePushMessage(ctx *gin.Context) {
+var transformCustomerDataFunc = utils.TransformCustomerData
+var customMarshalJSONFunc = utils.CustomMarshalJSON
 
+func (c *DataCustomerController) HandlePushMessage(ctx *gin.Context) {
 	// Loguear el cuerpo de la solicitud
 	body, _ := io.ReadAll(ctx.Request.Body)
 	log.Printf("Received request body: %s", string(body))
@@ -54,16 +59,18 @@ func (c *DataCustomerController) HandlePushMessage(ctx *gin.Context) {
 
 	var transformedCustomers []json.RawMessage
 	for _, customerData := range customerDataList {
-		transformedCustomer, err := utils.TransformCustomerData(customerData)
+		transformedCustomer, err := transformCustomerDataFunc(customerData)
 		if err != nil {
 			log.Printf("Error transforming customer data: %v", err)
-			continue
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error transforming customer data: " + err.Error()})
+			return // Agregar return para detener el flujo al encontrar un error
 		}
 
-		customerJSON, err := utils.CustomMarshalJSON(transformedCustomer)
+		customerJSON, err := customMarshalJSONFunc(transformedCustomer)
 		if err != nil {
 			log.Printf("Error marshaling customer data: %v", err)
-			continue
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error marshaling customer data: " + err.Error()})
+			return // Agregar return para detener el flujo al encontrar un error
 		}
 
 		transformedCustomers = append(transformedCustomers, customerJSON)

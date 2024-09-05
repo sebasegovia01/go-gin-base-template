@@ -11,6 +11,9 @@ import (
 	"google.golang.org/api/option"
 )
 
+type PubSubPublishServiceInterface interface {
+	PublishMessage(message json.RawMessage) error
+}
 type PubSubPublishService struct {
 	client *pubsub.Client
 	topics map[string]*pubsub.Topic
@@ -53,22 +56,16 @@ func NewPubSubPublishService(cfg *config.Config) (*PubSubPublishService, error) 
 	return service, nil
 }
 
-func (s *PubSubPublishService) PublishMessage(message interface{}) error {
-	data, err := json.Marshal(message)
-	if err != nil {
-		return fmt.Errorf("failed to marshal message: %w", err)
-	}
-
+func (s *PubSubPublishService) PublishMessage(message json.RawMessage) error {
+	// Usamos directamente el mensaje como json.RawMessage
 	ctx := context.Background()
 	var publishErrors []error
 
 	for topicName, topic := range s.topics {
 		result := topic.Publish(ctx, &pubsub.Message{
-			Data: data,
+			Data: message,
 		})
 
-		// Block until the result is returned and a server-generated
-		// ID is returned for the published message.
 		id, err := result.Get(ctx)
 		if err != nil {
 			publishErrors = append(publishErrors, fmt.Errorf("failed to publish message to topic %s: %w", topicName, err))
