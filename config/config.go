@@ -12,6 +12,15 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
+// Exporta la función para facilitar el mock en las pruebas
+var LoadEnvFile = godotenv.Load
+
+// Exporta la función que envuelve google.CredentialsFromJSON para facilitar el mock en las pruebas
+var GetGoogleCredentialsFromJSON = google.CredentialsFromJSON
+
+// Envuelve la función loadFromEnvironments para poder mockearla en pruebas
+var LoadFromEnvironments = loadFromEnvironments
+
 type Config struct {
 	ServerAddress  string
 	Environment    enums.Environment
@@ -24,15 +33,22 @@ func Load() (*Config, error) {
 	var env enums.Environment
 
 	// Intentar cargar desde ENVIRONMENTS primero (para Cloud Run)
-	if err := loadFromEnvironments(); err != nil {
-		fmt.Printf("No ENVIRONMENTS found or error loading from it: %v\n", err)
+	if err := LoadFromEnvironments(); err != nil {
+		// Revisar si el error es porque ENVIRONMENTS está vacío
+		if err.Error() == "ENVIRONMENTS variable is empty" {
+			// Si ENVIRONMENTS está vacío, intentamos cargar el archivo .env
+			fmt.Printf("No ENVIRONMENTS found, attempting to load .env file: %v\n", err)
 
-		if err := godotenv.Load(); err != nil {
-			return nil, fmt.Errorf("error loading .env file: %w", err)
+			if err := LoadEnvFile(); err != nil {
+				return nil, fmt.Errorf("error loading .env file: %w", err)
+			}
+		} else {
+			// Si hay otro tipo de error, devolverlo inmediatamente
+			return nil, fmt.Errorf("error loading from ENVIRONMENTS: %w", err)
 		}
 	}
 
-	// Determinar el entorno
+	// Continuar con la carga de configuraciones
 	envString := os.Getenv("ENV")
 	fmt.Printf("ENV value: '%s'\n", envString)
 
@@ -61,7 +77,7 @@ func Load() (*Config, error) {
 	gcpCredsJSON := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 	if gcpCredsJSON != "" {
 		var err error
-		gcpCreds, err = google.CredentialsFromJSON(context.Background(), []byte(gcpCredsJSON))
+		gcpCreds, err = GetGoogleCredentialsFromJSON(context.Background(), []byte(gcpCredsJSON))
 		if err != nil {
 			return nil, fmt.Errorf("error parsing GCP credentials JSON: %w", err)
 		}
