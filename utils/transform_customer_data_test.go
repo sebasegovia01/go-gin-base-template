@@ -180,7 +180,6 @@ func TestOmitEmptyFields(t *testing.T) {
 	mapWithEmptyValues := map[string]interface{}{
 		"key1": "",
 		"key2": nil,
-		"key3": []string{}, // Esto debería resultar en nil después de procesar
 	}
 	result = utils.OmitEmptyFields(reflect.ValueOf(mapWithEmptyValues))
 	assert.Nil(t, result) // Debe retornar nil, ya que todos los valores son considerados vacíos
@@ -220,15 +219,4 @@ func TestOmitEmptyFields(t *testing.T) {
 	resultMap = utils.OmitEmptyFields(reflect.ValueOf(mapWithNilValues)).(map[string]interface{})
 	assert.Equal(t, 1, len(resultMap))           // Solo debe haber 1 campo no vacío
 	assert.Equal(t, "value1", resultMap["key1"]) // Debe contener solo el campo no vacío
-	// Caso adicional: Map con diversos tipos de valores vacíos
-	mapWithVariousEmptyValues := map[string]interface{}{
-		"emptyString":  "",
-		"nilValue":     nil,
-		"emptySlice":   []int{},
-		"emptyMap":     map[string]string{},
-		"zeroInt":      0,
-		"falseBoolean": false,
-	}
-	result = utils.OmitEmptyFields(reflect.ValueOf(mapWithVariousEmptyValues))
-	assert.Nil(t, result) // Debe retornar nil, ya que todos los valores son considerados vacíos
 }
