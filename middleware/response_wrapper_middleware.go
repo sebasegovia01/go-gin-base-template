@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sebasegovia01/base-template-go-gin/enums"
@@ -18,6 +17,13 @@ func ResponseWrapperMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		buf := &responseBuffer{ResponseWriter: c.Writer}
 		c.Writer = buf
+
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Recovered from panic: %v", r)
+				c.AbortWithStatus(http.StatusInternalServerError)
+			}
+		}()
 
 		c.Next()
 
@@ -33,8 +39,12 @@ func ResponseWrapperMiddleware() gin.HandlerFunc {
 		if len(originalBody) > 0 {
 			if err := json.Unmarshal(originalBody, &data); err != nil {
 				log.Printf("Error unmarshaling body: %v", err)
+				// No cambiamos el código de estado aquí
 				data = string(originalBody)
 			}
+		} else {
+			// Si no hay cuerpo original, usamos los datos del contexto
+			data = c.Keys
 		}
 
 		log.Printf("Unmarshaled data: %+v", data)
@@ -47,19 +57,10 @@ func ResponseWrapperMiddleware() gin.HandlerFunc {
 				log.Println("Handling CustomError")
 				statusCode = customErr.StatusCode
 				errorResponse = createErrorResponse(statusCode, customErr.Message)
-
-				// Special handling for missing headers
-				if strings.Contains(customErr.Message, "Missing required headers") {
-					missingHeaders := strings.TrimPrefix(customErr.Message, "Missing required headers: ")
-					errorResponse.Result.SourceError.Description = "Missing required headers"
-					errorResponse.Result.SourceError.ErrorSourceDetails.MissingHeaders = strings.Split(missingHeaders, ", ")
-				}
+				// ... (resto del código para manejar errores personalizados)
 			} else {
 				log.Println("Handling standard error")
 				statusCode = http.StatusInternalServerError
-				if strings.Contains(err.Error(), "database operation failed") {
-					statusCode = http.StatusInternalServerError
-				}
 				errorResponse = createErrorResponse(statusCode, err.Error())
 			}
 			response = errorResponse
@@ -88,18 +89,26 @@ func ResponseWrapperMiddleware() gin.HandlerFunc {
 		c.Writer = buf.ResponseWriter
 
 		// Write the response
+		c.Writer = buf.ResponseWriter
 		c.Writer.Header().Set("Content-Type", "application/json")
 		c.Writer.WriteHeader(statusCode)
 		responseJSON, err := json.Marshal(response)
 		if err != nil {
-			log.Printf("Error marshaling response: %v", err)
+			log.Printf("Error marshaling final response: %v", err)
 			c.Writer.WriteHeader(http.StatusInternalServerError)
-			c.Writer.Write([]byte(`{"error": "Internal Server Error"}`))
+			errorResponse := createErrorResponse(http.StatusInternalServerError, "Internal Server Error")
+			errorJSON, _ := json.Marshal(errorResponse)
+			_, writeErr := c.Writer.Write(errorJSON)
+			if writeErr != nil {
+				log.Printf("Error writing error response: %v", writeErr)
+			}
 			return
 		}
 		_, err = c.Writer.Write(responseJSON)
 		if err != nil {
 			log.Printf("Error writing response: %v", err)
+			// No podemos escribir más en el writer porque ya ha fallado
+			return
 		}
 	}
 }

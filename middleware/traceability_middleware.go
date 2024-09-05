@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -123,7 +124,8 @@ func TraceabilityMiddleware() gin.HandlerFunc {
 				}
 				errorMsg = strings.TrimSuffix(errorMsg, ", ")
 			}
-			c.Error(errors.NewCustomError(400, errorMsg))
+			err := errors.NewCustomError(http.StatusBadRequest, errorMsg)
+			_ = c.Error(err)
 			c.Abort()
 			return
 		}
