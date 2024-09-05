@@ -10,6 +10,12 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/models"
 )
 
+var FormatRut = formatRUT
+
+var IsEmptyValue = isEmptyValue
+
+var OmitEmptyFields = omitEmptyFields
+
 func TransformCustomerData(data map[string]interface{}) (*models.Customer, error) {
 	payload, ok := data["payload"].(map[string]interface{})
 	if !ok {
@@ -131,6 +137,10 @@ func formatRUT(rut string, dv string) string {
 }
 
 func omitEmptyFields(v reflect.Value) interface{} {
+	if !v.IsValid() {
+		return nil
+	}
+
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
 			return nil
@@ -144,13 +154,13 @@ func omitEmptyFields(v reflect.Value) interface{} {
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Field(i)
 			if !field.CanInterface() {
-				continue // Skip unexported fields
+				continue // Omitir campos no exportados
 			}
 			structField := v.Type().Field(i)
 			jsonTag := structField.Tag.Get("json")
 			jsonName := strings.Split(jsonTag, ",")[0]
 			if jsonName == "-" {
-				continue // Skip fields with json:"-"
+				continue // Omitir campos con json:"-"
 			}
 			if jsonName == "" {
 				jsonName = structField.Name
@@ -168,10 +178,21 @@ func omitEmptyFields(v reflect.Value) interface{} {
 		result := make(map[string]interface{})
 		for _, key := range v.MapKeys() {
 			value := v.MapIndex(key)
-			fieldValue := omitEmptyFields(value)
-			if fieldValue != nil {
-				result[key.String()] = fieldValue
+
+			// Verificar si el valor es inválido o nil
+			if !value.IsValid() || value.IsNil() {
+				continue // Omitir valores vacíos o nil
 			}
+
+			fieldValue := omitEmptyFields(value)
+			if fieldValue == nil {
+				continue // Omitir valores vacíos
+			}
+			// Verificar si el valor es una cadena vacía
+			if str, ok := fieldValue.(string); ok && str == "" {
+				continue // Omitir cadenas vacías
+			}
+			result[key.String()] = fieldValue
 		}
 		if len(result) == 0 {
 			return nil
