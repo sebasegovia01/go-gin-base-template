@@ -14,12 +14,50 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/services"
 )
 
+// Variables globales para apuntar a las funciones reales, reemplazables en pruebas
+var loadConfigFunc = config.Load
+var setupServerFunc = setupServer
+var fatalfFunc = log.Fatalf
+var logPrintf = log.Printf
+
+// Definir la interfaz EngineRunner para abstraer el servidor
+type EngineRunner interface {
+	Run(addr ...string) error
+}
+
+// Adaptar gin.Engine para que implemente la interfaz EngineRunner
+func adaptGinToEngineRunner(engine *gin.Engine) EngineRunner {
+	return engineRunnerAdapter{engine}
+}
+
+// engineRunnerAdapter es un adaptador para convertir *gin.Engine en EngineRunner
+type engineRunnerAdapter struct {
+	*gin.Engine
+}
+
+// Función envoltorio para NewStorageService
+func NewStorageServiceInterface(cfg *config.Config) (services.StorageServiceInterface, error) {
+	return services.NewStorageService(cfg)
+}
+
+// Función envoltorio para NewPubSubService
+func NewPubSubServiceInterface(cfg *config.Config) (services.PubSubServiceInterface, error) {
+	return services.NewPubSubService(cfg)
+}
+
+var newPubSubPublishServiceFunc = services.NewPubSubPublishService
+
+func NewPubSubPublishServiceInterface(cfg *config.Config) (services.PubSubPublishServiceInterface, error) {
+	return newPubSubPublishServiceFunc(cfg)
+}
+
+// Modificar setupServer para devolver EngineRunner
 func setupServer(
 	cfg *config.Config,
-	newStorageService func(cfg *config.Config) (*services.StorageService, error),
-	newPubSubService func(cfg *config.Config) (*services.PubSubService, error),
-	newPubSubPublishService func(cfg *config.Config) (*services.PubSubPublishService, error),
-) (*gin.Engine, error) {
+	newStorageService func(cfg *config.Config) (services.StorageServiceInterface, error),
+	newPubSubService func(cfg *config.Config) (services.PubSubServiceInterface, error),
+	newPubSubPublishService func(cfg *config.Config) (services.PubSubPublishServiceInterface, error),
+) (EngineRunner, error) {
 	// Inicializar servicios
 	storageService, err := newStorageService(cfg)
 	if err != nil {
@@ -57,37 +95,52 @@ func setupServer(
 
 	routes.SetupRoutes(r, dataCustomerController)
 
-	return r, nil
+	// Adaptar *gin.Engine a EngineRunner
+	return adaptGinToEngineRunner(r), nil
 }
 
-var loadConfig = config.Load
-
-func main() {
+// Modificar run para usar EngineRunner
+func run(
+	loadConfigFunc func() (*config.Config, error),
+	setupServerFunc func(
+		cfg *config.Config,
+		newStorageService func(cfg *config.Config) (services.StorageServiceInterface, error),
+		newPubSubService func(cfg *config.Config) (services.PubSubServiceInterface, error),
+		newPubSubPublishService func(cfg *config.Config) (services.PubSubPublishServiceInterface, error),
+	) (EngineRunner, error),
+) error {
 
 	// Load configs
-	cfg, err := loadConfig()
+	cfg, err := loadConfigFunc()
 	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
+		return fmt.Errorf("error loading config: %v", err)
+
 	}
 
-	// setup server
-	r, err := setupServer(cfg, services.NewStorageService, services.NewPubSubService, services.NewPubSubPublishService)
-	if err != nil {
-		log.Fatalf("%v", err)
+	// Set default server address if not provided
+	if cfg.ServerAddress == "" {
+		cfg.ServerAddress = ":8080"
 	}
 
-	// init server
-	serverAddress := cfg.ServerAddress
-	if serverAddress == "" {
-		serverAddress = ":8080"
+	// setup server usando las funciones envoltorio
+	r, err := setupServerFunc(cfg, NewStorageServiceInterface, NewPubSubServiceInterface, NewPubSubPublishServiceInterface)
+	if err != nil {
+		fatalfFunc("%v", err) // Usa fatalfFunc en lugar de log.Fatalf
+		return err
 	}
 
 	// set current environment
-	environment := cfg.Environment
-	if environment == "" {
-		environment = enums.Dev
+	// set current environment
+	if cfg.Environment == "" {
+		cfg.Environment = enums.Dev
 	}
 
-	log.Printf("Server starting on port %s, environment is %s", serverAddress, environment)
-	r.Run(serverAddress)
+	logPrintf("Server starting on port %s, environment is %s", cfg.ServerAddress, cfg.Environment)
+	return r.Run(cfg.ServerAddress)
+}
+
+func main() {
+	if err := run(loadConfigFunc, setupServerFunc); err != nil {
+		fatalfFunc("%v", err)
+	}
 }
