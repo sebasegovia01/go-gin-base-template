@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -13,64 +14,78 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/services"
 )
 
-func main() {
-	// Cargar configuración
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
-	}
-
-	// Init go gin
-	r := gin.New()
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery()) // recovery from panic, keep server running
-
-	// middlewares
-	r.Use(middleware.ResponseWrapperMiddleware())
-
-	// Configurar manejador para rutas no encontradas
-	r.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
-	})
-
+func setupServer(
+	cfg *config.Config,
+	newStorageService func(cfg *config.Config) (*services.StorageService, error),
+	newPubSubService func(cfg *config.Config) (*services.PubSubService, error),
+	newPubSubPublishService func(cfg *config.Config) (*services.PubSubPublishService, error),
+) (*gin.Engine, error) {
 	// Inicializar servicios
-	storageService, err := services.NewStorageService(cfg)
+	storageService, err := newStorageService(cfg)
 	if err != nil {
-		log.Fatalf("Error initializing storage service: %v", err)
-	}
-	defer storageService.Close()
-
-	pubSubService, err := services.NewPubSubService(cfg)
-	if err != nil {
-		log.Fatalf("Error initializing PubSub service: %v", err)
+		if storageService != nil {
+			storageService.Close()
+		}
+		return nil, fmt.Errorf("error initializing storage service: %w", err)
 	}
 
-	pubSubPublishService, err := services.NewPubSubPublishService(cfg)
+	pubSubService, err := newPubSubService(cfg)
 	if err != nil {
-		log.Fatalf("Error initializing PubSub publish service: %v", err)
+		return nil, fmt.Errorf("error initializing PubSub service: %w", err)
 	}
-	defer pubSubPublishService.Close()
+
+	pubSubPublishService, err := newPubSubPublishService(cfg)
+	if err != nil {
+		if pubSubPublishService != nil {
+			pubSubPublishService.Close()
+		}
+		return nil, fmt.Errorf("error initializing PubSub publish service: %w", err)
+	}
 
 	// Inicializar controladores
 	dataCustomerController := controllers.NewDataCustomerController(pubSubService, storageService, pubSubPublishService)
 
 	// Configurar rutas
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+	r.Use(middleware.ResponseWrapperMiddleware())
+
+	r.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
+	})
+
 	routes.SetupRoutes(r, dataCustomerController)
 
-	// Routes log
-	for _, route := range r.Routes() {
-		log.Printf("Route: %s %s", route.Method, route.Path)
+	return r, nil
+}
+
+var loadConfig = config.Load
+
+func main() {
+
+	// Load configs
+	cfg, err := loadConfig()
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
 	}
 
-	// Iniciar servidor
+	// setup server
+	r, err := setupServer(cfg, services.NewStorageService, services.NewPubSubService, services.NewPubSubPublishService)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	// init server
 	serverAddress := cfg.ServerAddress
 	if serverAddress == "" {
-		serverAddress = ":8080" // Puerto por defecto si no se especifica
+		serverAddress = ":8080"
 	}
 
+	// set current environment
 	environment := cfg.Environment
 	if environment == "" {
-		environment = enums.Dev // env por defecto
+		environment = enums.Dev
 	}
 
 	log.Printf("Server starting on port %s, environment is %s", serverAddress, environment)

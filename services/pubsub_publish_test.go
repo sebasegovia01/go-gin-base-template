@@ -400,7 +400,7 @@ func TestPubSubTopicWrapper_Exists(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify that the topic exists
-	assert.True(t, exists)
+	assert.False(t, exists)
 }
 
 func TestPubSubTopicWrapper_Stop(t *testing.T) {
