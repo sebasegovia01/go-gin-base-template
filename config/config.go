@@ -22,11 +22,13 @@ var GetGoogleCredentialsFromJSON = google.CredentialsFromJSON
 var LoadFromEnvironments = loadFromEnvironments
 
 type Config struct {
-	ServerAddress  string
-	Environment    enums.Environment
-	Topics         []string
-	BucketName     string
-	GCPCredentials *google.Credentials
+	ServerAddress                       string
+	Environment                         enums.Environment
+	GCPCredentials                      *google.Credentials
+	DataStoreDBName                     string
+	DataStoreNamespace                  string
+	DatastorePresentialChannelKind      string
+	DatastoreAutomaticTellerMachineKind string
 }
 
 func Load() (*Config, error) {
@@ -61,17 +63,6 @@ func Load() (*Config, error) {
 
 	fmt.Printf("Current environment loaded: %s\n", env)
 
-	// Obtener los tópicos y dividirlos en un slice
-	topicsString := os.Getenv("PUBSUB_TOPICS")
-	topics := strings.Split(topicsString, ",")
-
-	// Trim espacios en blanco de cada tópico
-	for i, topic := range topics {
-		topics[i] = strings.TrimSpace(topic)
-	}
-
-	bucketName := os.Getenv("BUCKET_NAME")
-
 	// Manejar las credenciales de GCP
 	var gcpCreds *google.Credentials
 	gcpCredsJSON := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -83,17 +74,44 @@ func Load() (*Config, error) {
 		}
 	}
 
+	// Manejo configs datastore
+	dataStoreDBName := os.Getenv("DATASTORE_DB_NAME")
+
+	if dataStoreDBName == "" {
+		fmt.Println("DATASTORE_DB_NAME is empty, setting to: 'default'")
+	}
+
+	dataStoreNamespace := os.Getenv("DATASTORE_NAMESPACE")
+
+	if dataStoreNamespace == "" {
+		return nil, fmt.Errorf("DATASTORE_NAMESPACE is empty")
+	}
+
+	dataStorePresentialChannelsKind := os.Getenv("DATASTORE_PRESENTIAL_CHANNELS_KIND")
+
+	if dataStorePresentialChannelsKind == "" {
+		return nil, fmt.Errorf("DATASTORE_PRESENTIAL_CHANNELS_KIND is empty")
+	}
+
+	dataStoreAutomaticTellerMachinesKind := os.Getenv("DATASTORE_AUTOMATIC_TELLER_MACHINES_KIND")
+
+	if dataStoreAutomaticTellerMachinesKind == "" {
+		return nil, fmt.Errorf("DATASTORE_AUTOMATIC_TELLER_MACHINES_KIND is empty")
+	}
+
 	return &Config{
-		ServerAddress:  os.Getenv("PORT"),
-		Environment:    env,
-		Topics:         topics,
-		BucketName:     bucketName,
-		GCPCredentials: gcpCreds,
+		ServerAddress:                       os.Getenv("PORT"),
+		Environment:                         env,
+		GCPCredentials:                      gcpCreds,
+		DataStoreDBName:                     dataStoreDBName,
+		DataStoreNamespace:                  dataStoreNamespace,
+		DatastorePresentialChannelKind:      dataStorePresentialChannelsKind,
+		DatastoreAutomaticTellerMachineKind: dataStoreAutomaticTellerMachinesKind,
 	}, nil
 }
 
 func loadFromEnvironments() error {
-	// Define in cloud run this name for secrets!
+	// Define this env name in cloud run for secrets!
 	environmentsContent := os.Getenv("ENVIRONMENTS")
 
 	if environmentsContent == "" {

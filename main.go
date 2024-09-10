@@ -10,8 +10,8 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/controllers"
 	"github.com/sebasegovia01/base-template-go-gin/enums"
 	"github.com/sebasegovia01/base-template-go-gin/middleware"
+	"github.com/sebasegovia01/base-template-go-gin/repositories"
 	"github.com/sebasegovia01/base-template-go-gin/routes"
-	"github.com/sebasegovia01/base-template-go-gin/services"
 )
 
 // Variables globales para apuntar a las funciones reales, reemplazables en pruebas
@@ -35,53 +35,43 @@ type engineRunnerAdapter struct {
 	*gin.Engine
 }
 
-// Función envoltorio para NewStorageService
-func NewStorageServiceInterface(cfg *config.Config) (services.StorageServiceInterface, error) {
-	return services.NewStorageService(cfg)
+// Función envoltorio para NewAutomatedTellerMachineClient
+func NewAutomatedTellerMachineInterface(cfg *config.Config) (repositories.AutomatedTellerMachineInterface, error) {
+	return repositories.NewAutomatedTellerMachineClient(cfg, repositories.RealAutomatedTellerMachineCreator{})
 }
 
-// Función envoltorio para NewPubSubService
-func NewPubSubServiceInterface(cfg *config.Config) (services.PubSubServiceInterface, error) {
-	return services.NewPubSubService(cfg)
+// Función envoltorio para NewPresentialChannelClient
+func NewPresentialChannelInterface(cfg *config.Config) (repositories.PresentialChannelInterface, error) {
+	return repositories.NewPresentialChannelClient(cfg, repositories.RealPresentialChannelCreator{})
 }
 
-var newPubSubPublishServiceFunc = services.NewPubSubPublishService
-
-func NewPubSubPublishServiceInterface(cfg *config.Config) (services.PubSubPublishServiceInterface, error) {
-	return newPubSubPublishServiceFunc(cfg)
-}
-
-// Modificar setupServer para devolver EngineRunner
 func setupServer(
 	cfg *config.Config,
-	newStorageService func(cfg *config.Config) (services.StorageServiceInterface, error),
-	newPubSubService func(cfg *config.Config) (services.PubSubServiceInterface, error),
-	newPubSubPublishService func(cfg *config.Config) (services.PubSubPublishServiceInterface, error),
+	newAutomatedTellerMachineClient func(cfg *config.Config) (repositories.AutomatedTellerMachineInterface, error),
+	newPresentialChannelClient func(cfg *config.Config) (repositories.PresentialChannelInterface, error),
 ) (EngineRunner, error) {
-	// Inicializar servicios
-	storageService, err := newStorageService(cfg)
+
+	// Crear el cliente Datastore para ATM
+	clientATM, err := newAutomatedTellerMachineClient(cfg)
 	if err != nil {
-		if storageService != nil {
-			storageService.Close()
-		}
-		return nil, fmt.Errorf("error initializing storage service: %w", err)
+		return nil, fmt.Errorf("failed to create Datastore client for ATM: %w", err)
 	}
 
-	pubSubService, err := newPubSubService(cfg)
+	// Crear el cliente Datastore para Presential Channel
+	clientPresentialChannel, err := newPresentialChannelClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("error initializing PubSub service: %w", err)
+		return nil, fmt.Errorf("failed to create Datastore client for Presential Channel: %w", err)
 	}
 
-	pubSubPublishService, err := newPubSubPublishService(cfg)
-	if err != nil {
-		if pubSubPublishService != nil {
-			pubSubPublishService.Close()
-		}
-		return nil, fmt.Errorf("error initializing PubSub publish service: %w", err)
-	}
+	// Crear el repositorio de ATM
+	atmRepository := repositories.NewDatastoreATMRepository(clientATM, cfg.DataStoreDBName, cfg.DataStoreNamespace, cfg.DatastoreAutomaticTellerMachineKind)
+
+	// Crear el repositorio de Presential Channel
+	presentialChannelRepository := repositories.NewDatastorePresentialChannelRepository(clientPresentialChannel, cfg.DataStoreDBName, cfg.DataStoreNamespace, cfg.DatastorePresentialChannelKind)
 
 	// Inicializar controladores
-	dataCustomerController := controllers.NewDataCustomerController(pubSubService, storageService, pubSubPublishService)
+	atmController := controllers.NewAutomatedTellerMachineController(atmRepository)
+	presentialChannelController := controllers.NewPresentialChannelController(presentialChannelRepository)
 
 	// Configurar rutas
 	r := gin.New()
@@ -93,44 +83,41 @@ func setupServer(
 		c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
 	})
 
-	routes.SetupRoutes(r, dataCustomerController)
+	// Añadir rutas
+	routes.SetupRoutes(r, atmController, presentialChannelController)
 
 	// Adaptar *gin.Engine a EngineRunner
 	return adaptGinToEngineRunner(r), nil
 }
 
-// Modificar run para usar EngineRunner
 func run(
 	loadConfigFunc func() (*config.Config, error),
 	setupServerFunc func(
 		cfg *config.Config,
-		newStorageService func(cfg *config.Config) (services.StorageServiceInterface, error),
-		newPubSubService func(cfg *config.Config) (services.PubSubServiceInterface, error),
-		newPubSubPublishService func(cfg *config.Config) (services.PubSubPublishServiceInterface, error),
+		newAutomatedTellerMachineClient func(cfg *config.Config) (repositories.AutomatedTellerMachineInterface, error),
+		newPresentialChannelClient func(cfg *config.Config) (repositories.PresentialChannelInterface, error),
 	) (EngineRunner, error),
 ) error {
 
-	// Load configs
+	// Cargar configuración
 	cfg, err := loadConfigFunc()
 	if err != nil {
 		return fmt.Errorf("error loading config: %v", err)
-
 	}
 
-	// Set default server address if not provided
+	// Configurar dirección del servidor por defecto si no está definida
 	if cfg.ServerAddress == "" {
 		cfg.ServerAddress = ":8080"
 	}
 
-	// setup server usando las funciones envoltorio
-	r, err := setupServerFunc(cfg, NewStorageServiceInterface, NewPubSubServiceInterface, NewPubSubPublishServiceInterface)
+	// Inicializar servidor usando setupServerFunc
+	r, err := setupServerFunc(cfg, NewAutomatedTellerMachineInterface, NewPresentialChannelInterface)
 	if err != nil {
 		fatalfFunc("%v", err) // Usa fatalfFunc en lugar de log.Fatalf
 		return err
 	}
 
-	// set current environment
-	// set current environment
+	// Configurar el entorno actual
 	if cfg.Environment == "" {
 		cfg.Environment = enums.Dev
 	}
