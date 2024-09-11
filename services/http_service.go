@@ -9,7 +9,7 @@ import (
 )
 
 type HTTPServiceInterface interface {
-	SendRequest(method, url string, params map[string]string) ([]byte, error)
+	SendRequest(method, url string, params map[string]string, headers map[string]string) ([]byte, error)
 }
 
 type HTTPService struct {
@@ -25,8 +25,8 @@ func NewHTTPService() *HTTPService {
 	}
 }
 
-// SendRequest sends an HTTP request with optional query parameters
-func (h *HTTPService) SendRequest(method, url string, params map[string]string) ([]byte, error) {
+// SendRequest sends an HTTP request with optional query parameters and headers
+func (h *HTTPService) SendRequest(method, url string, params map[string]string, headers map[string]string) ([]byte, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -39,8 +39,13 @@ func (h *HTTPService) SendRequest(method, url string, params map[string]string) 
 	}
 	req.URL.RawQuery = q.Encode()
 
-	// Log the request URL
-	log.Printf("Sending %s request to: %s", method, req.URL.String())
+	// Adding headers to the request
+	for key, value := range headers {
+		req.Header.Add(key, value)
+	}
+
+	// Log the request URL and headers
+	log.Printf("Sending %s request to: %s with headers: %v", method, req.URL.String(), headers)
 
 	// Send the request
 	resp, err := h.client.Do(req)

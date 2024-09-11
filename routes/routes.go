@@ -18,6 +18,8 @@ func SetupRoutes(r *gin.Engine, httpController *controllers.HTTPController) {
 	{
 		atms := api.Group("/automated-teller-machines")
 		{
+			atms.GET("/", WithTraceability(httpController.GetAutomatedTellerMachine))
+
 			atms.GET("/:id", WithTraceability(httpController.GetAutomatedTellerMachine))
 		}
 	}
@@ -26,6 +28,8 @@ func SetupRoutes(r *gin.Engine, httpController *controllers.HTTPController) {
 	{
 		channels := api.Group("/presentialchannels")
 		{
+			channels.GET("/", WithTraceability(httpController.GetPresentialChannel))
+
 			channels.GET("/:id", WithTraceability(httpController.GetPresentialChannel))
 		}
 	}
