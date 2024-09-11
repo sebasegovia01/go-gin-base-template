@@ -10,8 +10,8 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/controllers"
 	"github.com/sebasegovia01/base-template-go-gin/enums"
 	"github.com/sebasegovia01/base-template-go-gin/middleware"
-	"github.com/sebasegovia01/base-template-go-gin/repositories"
 	"github.com/sebasegovia01/base-template-go-gin/routes"
+	"github.com/sebasegovia01/base-template-go-gin/services"
 )
 
 // Variables globales para apuntar a las funciones reales, reemplazables en pruebas
@@ -35,43 +35,21 @@ type engineRunnerAdapter struct {
 	*gin.Engine
 }
 
-// Función envoltorio para NewAutomatedTellerMachineClient
-func NewAutomatedTellerMachineInterface(cfg *config.Config) (repositories.AutomatedTellerMachineInterface, error) {
-	return repositories.NewAutomatedTellerMachineClient(cfg, repositories.RealAutomatedTellerMachineCreator{})
-}
-
-// Función envoltorio para NewPresentialChannelClient
-func NewPresentialChannelInterface(cfg *config.Config) (repositories.PresentialChannelInterface, error) {
-	return repositories.NewPresentialChannelClient(cfg, repositories.RealPresentialChannelCreator{})
+// Función envoltorio para crear el servicio HTTP
+func NewHTTPService(cfg *config.Config) services.HTTPServiceInterface {
+	return services.NewHTTPService()
 }
 
 func setupServer(
 	cfg *config.Config,
-	newAutomatedTellerMachineClient func(cfg *config.Config) (repositories.AutomatedTellerMachineInterface, error),
-	newPresentialChannelClient func(cfg *config.Config) (repositories.PresentialChannelInterface, error),
+	newHTTPService func(cfg *config.Config) services.HTTPServiceInterface,
 ) (EngineRunner, error) {
 
-	// Crear el cliente Datastore para ATM
-	clientATM, err := newAutomatedTellerMachineClient(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Datastore client for ATM: %w", err)
-	}
+	// Crear el servicio HTTP
+	httpService := newHTTPService(cfg)
 
-	// Crear el cliente Datastore para Presential Channel
-	clientPresentialChannel, err := newPresentialChannelClient(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Datastore client for Presential Channel: %w", err)
-	}
-
-	// Crear el repositorio de ATM
-	atmRepository := repositories.NewDatastoreATMRepository(clientATM, cfg.DataStoreDBName, cfg.DataStoreNamespace, cfg.DatastoreAutomaticTellerMachineKind)
-
-	// Crear el repositorio de Presential Channel
-	presentialChannelRepository := repositories.NewDatastorePresentialChannelRepository(clientPresentialChannel, cfg.DataStoreDBName, cfg.DataStoreNamespace, cfg.DatastorePresentialChannelKind)
-
-	// Inicializar controladores
-	atmController := controllers.NewAutomatedTellerMachineController(atmRepository)
-	presentialChannelController := controllers.NewPresentialChannelController(presentialChannelRepository)
+	// Inicializar el controlador HTTP
+	httpController := controllers.NewHTTPController(httpService, cfg)
 
 	// Configurar rutas
 	r := gin.New()
@@ -84,7 +62,7 @@ func setupServer(
 	})
 
 	// Añadir rutas
-	routes.SetupRoutes(r, atmController, presentialChannelController)
+	routes.SetupRoutes(r, httpController)
 
 	// Adaptar *gin.Engine a EngineRunner
 	return adaptGinToEngineRunner(r), nil
@@ -94,8 +72,7 @@ func run(
 	loadConfigFunc func() (*config.Config, error),
 	setupServerFunc func(
 		cfg *config.Config,
-		newAutomatedTellerMachineClient func(cfg *config.Config) (repositories.AutomatedTellerMachineInterface, error),
-		newPresentialChannelClient func(cfg *config.Config) (repositories.PresentialChannelInterface, error),
+		newHTTPService func(cfg *config.Config) services.HTTPServiceInterface,
 	) (EngineRunner, error),
 ) error {
 
@@ -111,7 +88,7 @@ func run(
 	}
 
 	// Inicializar servidor usando setupServerFunc
-	r, err := setupServerFunc(cfg, NewAutomatedTellerMachineInterface, NewPresentialChannelInterface)
+	r, err := setupServerFunc(cfg, NewHTTPService)
 	if err != nil {
 		fatalfFunc("%v", err) // Usa fatalfFunc en lugar de log.Fatalf
 		return err

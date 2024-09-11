@@ -6,8 +6,7 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/middleware"
 )
 
-func SetupRoutes(r *gin.Engine, automatedTellerMachineController *controllers.AutomatedTellerMachineController,
-	presentialChannelsController *controllers.PresentialChannelController) {
+func SetupRoutes(r *gin.Engine, httpController *controllers.HTTPController) {
 
 	api := r.Group("/service-channels/v1/api")
 
@@ -15,23 +14,19 @@ func SetupRoutes(r *gin.Engine, automatedTellerMachineController *controllers.Au
 	healthController := controllers.NewHealthController()
 	api.GET("/health", healthController.HealthCheck)
 
-	// automated teller machines routes
+	// Rutas para los cajeros automáticos (Automated Teller Machines)
 	{
 		atms := api.Group("/automated-teller-machines")
 		{
-			atms.GET("/", WithTraceability(automatedTellerMachineController.GetATMs))
-
-			atms.GET("/:id", WithTraceability(automatedTellerMachineController.GetATMs))
+			atms.GET("/:id", WithTraceability(httpController.GetAutomatedTellerMachine))
 		}
 	}
 
-	// presential channels routes
+	// Rutas para los canales presenciales (Presential Channels)
 	{
-		presentialChannels := api.Group("/presentialchannels")
+		channels := api.Group("/presentialchannels")
 		{
-			presentialChannels.GET("/", WithTraceability(presentialChannelsController.GetPresentialChannels))
-
-			presentialChannels.GET("/:id", WithTraceability(presentialChannelsController.GetPresentialChannels))
+			channels.GET("/:id", WithTraceability(httpController.GetPresentialChannel))
 		}
 	}
 }

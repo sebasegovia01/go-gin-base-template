@@ -22,13 +22,11 @@ var GetGoogleCredentialsFromJSON = google.CredentialsFromJSON
 var LoadFromEnvironments = loadFromEnvironments
 
 type Config struct {
-	ServerAddress                       string
-	Environment                         enums.Environment
-	GCPCredentials                      *google.Credentials
-	DataStoreDBName                     string
-	DataStoreNamespace                  string
-	DatastorePresentialChannelKind      string
-	DatastoreAutomaticTellerMachineKind string
+	ServerAddress                string
+	Environment                  enums.Environment
+	GCPCredentials               *google.Credentials
+	UrlMsPresentialChannels      string
+	UrlMsAutomaticTellerMachines string
 }
 
 func Load() (*Config, error) {
@@ -74,39 +72,25 @@ func Load() (*Config, error) {
 		}
 	}
 
-	// Manejo configs datastore
-	dataStoreDBName := os.Getenv("DATASTORE_DB_NAME")
+	// Manejo configs urls microservicio fachada
+	urlMsPresentialChannels := os.Getenv("URL_MS_PRESENTIAL_CHANELS")
 
-	if dataStoreDBName == "" {
-		fmt.Println("DATASTORE_DB_NAME is empty, setting to: 'default'")
+	if urlMsPresentialChannels == "" {
+		return nil, fmt.Errorf("URL_MS_PRESENTIAL_CHANELS is empty, setting to: 'default'")
 	}
 
-	dataStoreNamespace := os.Getenv("DATASTORE_NAMESPACE")
+	urlMsAutomaticTellerMachines := os.Getenv("URL_MS_AUTOMATIC_TELLER_MACHINES")
 
-	if dataStoreNamespace == "" {
-		return nil, fmt.Errorf("DATASTORE_NAMESPACE is empty")
-	}
-
-	dataStorePresentialChannelsKind := os.Getenv("DATASTORE_PRESENTIAL_CHANNELS_KIND")
-
-	if dataStorePresentialChannelsKind == "" {
-		return nil, fmt.Errorf("DATASTORE_PRESENTIAL_CHANNELS_KIND is empty")
-	}
-
-	dataStoreAutomaticTellerMachinesKind := os.Getenv("DATASTORE_AUTOMATIC_TELLER_MACHINES_KIND")
-
-	if dataStoreAutomaticTellerMachinesKind == "" {
-		return nil, fmt.Errorf("DATASTORE_AUTOMATIC_TELLER_MACHINES_KIND is empty")
+	if urlMsAutomaticTellerMachines == "" {
+		return nil, fmt.Errorf("URL_MS_AUTOMATIC_TELLER_MACHINES is empty")
 	}
 
 	return &Config{
-		ServerAddress:                       os.Getenv("PORT"),
-		Environment:                         env,
-		GCPCredentials:                      gcpCreds,
-		DataStoreDBName:                     dataStoreDBName,
-		DataStoreNamespace:                  dataStoreNamespace,
-		DatastorePresentialChannelKind:      dataStorePresentialChannelsKind,
-		DatastoreAutomaticTellerMachineKind: dataStoreAutomaticTellerMachinesKind,
+		ServerAddress:                os.Getenv("PORT"),
+		Environment:                  env,
+		GCPCredentials:               gcpCreds,
+		UrlMsPresentialChannels:      urlMsPresentialChannels,
+		UrlMsAutomaticTellerMachines: urlMsAutomaticTellerMachines,
 	}, nil
 }
 
