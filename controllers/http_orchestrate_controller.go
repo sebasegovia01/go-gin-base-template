@@ -10,6 +10,8 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/utils"
 )
 
+var TransformResponse = utils.TransformResponse
+
 type HTTPController struct {
 	service services.HTTPServiceInterface
 	cfg     *config.Config
@@ -43,7 +45,7 @@ func (c *HTTPController) GetAutomatedTellerMachine(ctx *gin.Context) {
 	}
 
 	// Transformar la respuesta para ajustar el formato
-	transformedBody, err := utils.TransformResponse(body)
+	transformedBody, err := TransformResponse(body)
 	if err != nil {
 		log.Printf("Error transforming response: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to transform ATM data"})
@@ -74,7 +76,7 @@ func (c *HTTPController) GetPresentialChannel(ctx *gin.Context) {
 	}
 
 	// Transformar la respuesta para ajustar el formato
-	transformedBody, err := utils.TransformResponse(body)
+	transformedBody, err := TransformResponse(body)
 	if err != nil {
 		log.Printf("Error transforming response: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to transform Presential Channel data"})
