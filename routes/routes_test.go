@@ -1,58 +1,45 @@
 package routes
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sebasegovia01/base-template-go-gin/controllers"
-	"github.com/sebasegovia01/base-template-go-gin/services"
+	"github.com/sebasegovia01/base-template-go-gin/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// Mock para PubSubService
-type MockPubSubService struct {
+// Mocks para AutomatedTellerMachineRepository
+type MockAutomatedTellerMachineRepo struct {
 	mock.Mock
 }
 
-func (m *MockPubSubService) ExtractStorageEvent(body io.Reader) (*services.StorageEvent, error) {
-	args := m.Called(body)
-	return args.Get(0).(*services.StorageEvent), args.Error(1)
-}
-
-// Mock para StorageService
-type MockStorageService struct {
-	mock.Mock
-}
-
-func (m *MockStorageService) ProcessFile(filename string) ([]*map[string]interface{}, error) {
-	args := m.Called(filename)
-	return args.Get(0).([]*map[string]interface{}), args.Error(1)
-}
-
-func (m *MockStorageService) Close() error {
+func (m *MockAutomatedTellerMachineRepo) GetAllATMs() ([]models.AutomatedTellerMachine, error) {
 	args := m.Called()
-	return args.Error(0)
+	return args.Get(0).([]models.AutomatedTellerMachine), args.Error(1)
 }
 
-// Mock para PubSubPublishService
-type MockPubSubPublishService struct {
+func (m *MockAutomatedTellerMachineRepo) GetATMByID(atmIdentifier string) (models.AutomatedTellerMachine, error) {
+	args := m.Called(atmIdentifier)
+	return args.Get(0).(models.AutomatedTellerMachine), args.Error(1)
+}
+
+// Mocks para PresentialChannelRepository
+type MockPresentialChannelRepo struct {
 	mock.Mock
 }
 
-func (m *MockPubSubPublishService) PublishMessage(message json.RawMessage) error {
-	args := m.Called(message)
-	return args.Error(0)
+func (m *MockPresentialChannelRepo) GetAllPresentialChannels() ([]models.PresentialChannel, error) {
+	args := m.Called()
+	return args.Get(0).([]models.PresentialChannel), args.Error(1)
 }
 
-func (m *MockPubSubPublishService) Close() error {
-	args := m.Called()
-	return args.Error(0)
+func (m *MockPresentialChannelRepo) GetPresentialChannelByID(channelIdentifier string) (models.PresentialChannel, error) {
+	args := m.Called(channelIdentifier)
+	return args.Get(0).(models.PresentialChannel), args.Error(1)
 }
 
 func TestSetupRoutes(t *testing.T) {
@@ -61,46 +48,49 @@ func TestSetupRoutes(t *testing.T) {
 	// Crear un router de prueba
 	r := gin.New()
 
-	// Crear mocks para los servicios
-	mockPubSubService := new(MockPubSubService)
-	mockStorageService := new(MockStorageService)
-	mockPubSubPublishService := new(MockPubSubPublishService)
+	// Crear mocks para los repositorios
+	mockATMRepo := new(MockAutomatedTellerMachineRepo)
+	mockPresentialChannelRepo := new(MockPresentialChannelRepo)
 
-	// Crear una instancia real de DataCustomerController con los mocks
-	dataCustomerController := controllers.NewDataCustomerController(mockPubSubService, mockStorageService, mockPubSubPublishService)
+	// Crear instancias reales de los controladores con los repositorios mock
+	atmController := controllers.NewAutomatedTellerMachineController(mockATMRepo)
+	presentialChannelController := controllers.NewPresentialChannelController(mockPresentialChannelRepo)
 
-	// Configurar el comportamiento esperado del mock PubSubService
-	mockPubSubService.On("ExtractStorageEvent", mock.Anything).Return(&services.StorageEvent{Name: "test.json"}, nil)
-
-	// Configurar el comportamiento esperado del mock StorageService
-	mockStorageService.On("ProcessFile", "test.json").Return([]*map[string]interface{}{
-		{
-			"payload": map[string]interface{}{
-				"BOPERS_MAE_NAT_BSC": map[string]interface{}{
-					"PEMNB_GLS_NOM_PEL": "John",
-					"PEMNB_GLS_APL_PAT": "Doe",
-				},
-			},
-		},
-	}, nil)
-
-	// Configurar el comportamiento esperado del mock PubSubPublishService
-	mockPubSubPublishService.On("PublishMessage", mock.Anything).Return(nil)
-
-	// Llamar a `SetupRoutes` para registrar las rutas con el controlador real
-	SetupRoutes(r, dataCustomerController)
+	// Configurar las rutas con los controladores
+	SetupRoutes(r, atmController, presentialChannelController)
 
 	// Prueba de la ruta de HealthCheck
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/customer-data-retrieval/v1/api/health", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/service-channels/v1/api/health", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.JSONEq(t, `{"status":"UP","message":"API is healthy"}`, w.Body.String())
 
-	// Prueba de la ruta de /customers/retrieve
+	// Prueba de la ruta /automated-teller-machines/
+	mockATMRepo.On("GetAllATMs").Return([]models.AutomatedTellerMachine{
+		{
+			ATMIdentifier: "ATM001",
+			StreetName:    "Main Street",
+		},
+	}, nil)
+
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodPost, "/customer-data-retrieval/v1/api/customers/retrieve", bytes.NewBuffer([]byte(`{}`)))
+	req, _ = http.NewRequest(http.MethodGet, "/service-channels/v1/api/automated-teller-machines/", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Prueba de la ruta /presentialchannels/
+	mockPresentialChannelRepo.On("GetAllPresentialChannels").Return([]models.PresentialChannel{
+		{
+			PresentialChannelIdentifier: "CH001",
+			StreetName:                  "Channel One",
+		},
+	}, nil)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodGet, "/service-channels/v1/api/presentialchannels/", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
