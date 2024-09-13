@@ -1,58 +1,26 @@
 package routes
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sebasegovia01/base-template-go-gin/config"
 	"github.com/sebasegovia01/base-template-go-gin/controllers"
-	"github.com/sebasegovia01/base-template-go-gin/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// Mock para PubSubService
-type MockPubSubService struct {
+// Mock para HTTPServiceInterface
+type MockHTTPService struct {
 	mock.Mock
 }
 
-func (m *MockPubSubService) ExtractStorageEvent(body io.Reader) (*services.StorageEvent, error) {
-	args := m.Called(body)
-	return args.Get(0).(*services.StorageEvent), args.Error(1)
-}
-
-// Mock para StorageService
-type MockStorageService struct {
-	mock.Mock
-}
-
-func (m *MockStorageService) ProcessFile(filename string) ([]*map[string]interface{}, error) {
-	args := m.Called(filename)
-	return args.Get(0).([]*map[string]interface{}), args.Error(1)
-}
-
-func (m *MockStorageService) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-// Mock para PubSubPublishService
-type MockPubSubPublishService struct {
-	mock.Mock
-}
-
-func (m *MockPubSubPublishService) PublishMessage(message json.RawMessage) error {
-	args := m.Called(message)
-	return args.Error(0)
-}
-
-func (m *MockPubSubPublishService) Close() error {
-	args := m.Called()
-	return args.Error(0)
+// Actualizamos la firma de SendRequest para que coincida con la esperada por HTTPController
+func (m *MockHTTPService) SendRequest(method string, url string, headers map[string]string, queryParams map[string]string) ([]byte, error) {
+	args := m.Called(method, url, headers, queryParams)
+	return args.Get(0).([]byte), args.Error(1)
 }
 
 func TestSetupRoutes(t *testing.T) {
@@ -61,49 +29,83 @@ func TestSetupRoutes(t *testing.T) {
 	// Crear un router de prueba
 	r := gin.New()
 
-	// Crear mocks para los servicios
-	mockPubSubService := new(MockPubSubService)
-	mockStorageService := new(MockStorageService)
-	mockPubSubPublishService := new(MockPubSubPublishService)
+	// Crear mocks para el servicio HTTP
+	mockHTTPService := new(MockHTTPService)
 
-	// Crear una instancia real de DataCustomerController con los mocks
-	dataCustomerController := controllers.NewDataCustomerController(mockPubSubService, mockStorageService, mockPubSubPublishService)
+	// Crear una configuración de prueba
+	testConfig := &config.Config{
+		UrlMsAutomaticTellerMachines: "http://test-url-automated-teller-machines",
+		UrlMsPresentialChannels:      "http://test-url-presential-channels",
+	}
 
-	// Configurar el comportamiento esperado del mock PubSubService
-	mockPubSubService.On("ExtractStorageEvent", mock.Anything).Return(&services.StorageEvent{Name: "test.json"}, nil)
+	// Crear una instancia real de HTTPController con los mocks y la configuración
+	httpController := controllers.NewHTTPController(mockHTTPService, testConfig)
 
-	// Configurar el comportamiento esperado del mock StorageService
-	mockStorageService.On("ProcessFile", "test.json").Return([]*map[string]interface{}{
-		{
-			"payload": map[string]interface{}{
-				"BOPERS_MAE_NAT_BSC": map[string]interface{}{
-					"PEMNB_GLS_NOM_PEL": "John",
-					"PEMNB_GLS_APL_PAT": "Doe",
-				},
-			},
-		},
-	}, nil)
+	// Configurar las rutas con el controlador real
+	SetupRoutes(r, httpController)
 
-	// Configurar el comportamiento esperado del mock PubSubPublishService
-	mockPubSubPublishService.On("PublishMessage", mock.Anything).Return(nil)
+	// Headers requeridos por el middleware
+	headers := map[string]string{
+		"Consumer-Sys-Code":          "CHL-SIT-SEG",
+		"Consumer-Enterprise-Code":   "BANCORIPLEY-CHL",
+		"Consumer-Country-Code":      "CHL",
+		"Trace-Client-Req-Timestamp": "2024-09-05 12:00:00.123456+0000",
+		"Trace-Source-Id":            "123e4567-e89b-12d3-a456-426614174000",
+		"Channel-Name":               "SEGUROS",
+		"Channel-Mode":               "PRESENCIAL",
+	}
 
-	// Llamar a `SetupRoutes` para registrar las rutas con el controlador real
-	SetupRoutes(r, dataCustomerController)
+	// Simular comportamiento del servicio HTTP para cajeros automáticos
+	mockHTTPService.On("SendRequest", "GET", "http://test-url-automated-teller-machines/", mock.Anything, mock.Anything).Return([]byte(`{"message": "ATM data"}`), nil)
 
-	// Prueba de la ruta de HealthCheck
+	// Probar la ruta GET /automated-teller-machines/
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/customer-data-retrieval/v1/api/health", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/service-channels/v1/api/automated-teller-machines/", nil)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 	r.ServeHTTP(w, req)
 
+	// Verificar respuesta
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockHTTPService.AssertCalled(t, "SendRequest", "GET", "http://test-url-automated-teller-machines/", mock.Anything, mock.Anything)
+
+	// Simular comportamiento del servicio HTTP para canales presenciales
+	mockHTTPService.On("SendRequest", "GET", "http://test-url-presential-channels/", mock.Anything, mock.Anything).Return([]byte(`{"message": "Presential Channel data"}`), nil)
+
+	// Probar la ruta GET /presentialchannels/
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodGet, "/service-channels/v1/api/presentialchannels/", nil)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	r.ServeHTTP(w, req)
+
+	// Verificar respuesta
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockHTTPService.AssertCalled(t, "SendRequest", "GET", "http://test-url-presential-channels/", mock.Anything, mock.Anything)
+}
+
+func TestHealthCheck(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	// Crear un router de prueba
+	r := gin.New()
+
+	// Crear una instancia real de HealthController
+	healthController := controllers.NewHealthController()
+
+	// Configurar la ruta de health check
+	r.GET("/service-channels/v1/api/health", healthController.HealthCheck)
+
+	// Probar la ruta GET /health
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/service-channels/v1/api/health", nil)
+	r.ServeHTTP(w, req)
+
+	// Verificar la respuesta de health check
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.JSONEq(t, `{"status":"UP","message":"API is healthy"}`, w.Body.String())
-
-	// Prueba de la ruta de /customers/retrieve
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodPost, "/customer-data-retrieval/v1/api/customers/retrieve", bytes.NewBuffer([]byte(`{}`)))
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestWithTraceability(t *testing.T) {
