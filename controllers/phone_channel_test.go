@@ -65,14 +65,14 @@ func TestHandlePushMessage(t *testing.T) {
 		expectedResponse   gin.H
 	}{
 		{
-			name: "Successful processing of electronic channels",
+			name: "Successful processing of phone channels",
 			setupMocks: func(mps *MockPubSubService, mss *MockStorageService, mpps *MockPubSubPublishService) {
 				mps.On("ExtractStorageEvent", mock.Anything).Return(&services.StorageEvent{Name: "channels.json"}, nil)
 				mss.On("ProcessFile", "channels.json").Return([]*map[string]interface{}{
 					{
 						"payload": map[string]interface{}{
-							"BOPERS_WEB_CHANNEL": map[string]interface{}{
-								"WEB_CHANNEL_TYPE": "Public",
+							"BOPERS_PHONE_CHANNEL": map[string]interface{}{
+								"PHONE_NUMBER": "+562 2768 9200",
 							},
 						},
 					},
@@ -81,7 +81,7 @@ func TestHandlePushMessage(t *testing.T) {
 			},
 			expectedStatusCode: http.StatusOK,
 			expectedResponse: gin.H{
-				"status":     "Electronic channel data processed and published successfully",
+				"status":     "Phone channel data processed and published successfully",
 				"data_count": float64(1),
 			},
 		},
@@ -113,19 +113,19 @@ func TestHandlePushMessage(t *testing.T) {
 				mss.On("ProcessFile", "channels.json").Return([]*map[string]interface{}{
 					{
 						"payload": map[string]interface{}{
-							"BOPERS_WEB_CHANNEL": map[string]interface{}{
-								"WEB_CHANNEL_TYPE": "Public",
+							"BOPERS_PHONE_CHANNEL": map[string]interface{}{
+								"PHONE_NUMBER": "+562 2768 9200",
 							},
 						},
 					},
 				}, nil)
 
 				// Simulamos un error en la transformación de datos
-				originalTransformFunc := transformElectronicChannelDataFunc
-				transformElectronicChannelDataFunc = func(data *map[string]interface{}) (*models.ElectronicChannels, error) {
+				originalTransformFunc := transformPhonechannelDataFunc
+				transformPhonechannelDataFunc = func(data *map[string]interface{}) (*models.ElectronicChannels, error) {
 					return nil, errors.New("transformation error")
 				}
-				t.Cleanup(func() { transformElectronicChannelDataFunc = originalTransformFunc })
+				t.Cleanup(func() { transformPhonechannelDataFunc = originalTransformFunc })
 			},
 			expectedStatusCode: http.StatusInternalServerError,
 			expectedResponse: gin.H{
@@ -139,8 +139,8 @@ func TestHandlePushMessage(t *testing.T) {
 				mss.On("ProcessFile", "channels.json").Return([]*map[string]interface{}{
 					{
 						"payload": map[string]interface{}{
-							"BOPERS_WEB_CHANNEL": map[string]interface{}{
-								"WEB_CHANNEL_TYPE": "Public",
+							"BOPERS_PHONE_CHANNEL": map[string]interface{}{
+								"PHONE_NUMBER": "+562 2768 9200",
 							},
 						},
 					},
@@ -159,8 +159,8 @@ func TestHandlePushMessage(t *testing.T) {
 				mss.On("ProcessFile", "channels.json").Return([]*map[string]interface{}{
 					{
 						"payload": map[string]interface{}{
-							"BOPERS_WEB_CHANNEL": map[string]interface{}{
-								"WEB_CHANNEL_TYPE": make(chan int), // Esto causará un error al serializar
+							"BOPERS_PHONE_CHANNEL": map[string]interface{}{
+								"PHONE_NUMBER": make(chan int), // Esto causará un error al serializar
 							},
 						},
 					},
@@ -178,8 +178,8 @@ func TestHandlePushMessage(t *testing.T) {
 				mss.On("ProcessFile", "channels.json").Return([]*map[string]interface{}{
 					{
 						"payload": map[string]interface{}{
-							"BOPERS_WEB_CHANNEL": map[string]interface{}{
-								"WEB_CHANNEL_TYPE": "Public",
+							"BOPERS_PHONE_CHANNEL": map[string]interface{}{
+								"PHONE_NUMBER": "+562 2768 9200",
 							},
 						},
 					},
@@ -201,7 +201,7 @@ func TestHandlePushMessage(t *testing.T) {
 
 			tt.setupMocks(mockPubSubService, mockStorageService, mockPubSubPublishService)
 
-			controller := NewDataElectronicChannelsController(mockPubSubService, mockStorageService, mockPubSubPublishService)
+			controller := NewDataPhoneChannelsController(mockPubSubService, mockStorageService, mockPubSubPublishService)
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
@@ -229,15 +229,20 @@ func TestHandlePushMessage_ErrorPublishingMessage(t *testing.T) {
 	mockStorageService.On("ProcessFile", "channels.json").Return([]*map[string]interface{}{
 		{
 			"payload": map[string]interface{}{
-				"BOPERS_WEB_CHANNEL": map[string]interface{}{
-					"WEB_CHANNEL_TYPE": "Public",
+				"BOPERS_PHONE_CHANNEL": map[string]interface{}{
+					"PHONE_NUMBER": "+562 2768 9200",
+				},
+				"BOPERS_SMS_CHANNEL": map[string]interface{}{
+					"SMS_AVAILABLE_SERVICES":      "Apertura Productos, Cierre Productos",
+					"SMS_AVAILABLE_SERVICES_CODE": "03",
+					"SMS_ATTENTION_HOURS":         "09:00:00 - 15:00:00",
 				},
 			},
 		},
 	}, nil)
 	mockPubSubPublishService.On("PublishMessage", mock.Anything).Return(errors.New("publishing error"))
 
-	controller := NewDataElectronicChannelsController(mockPubSubService, mockStorageService, mockPubSubPublishService)
+	controller := NewDataPhoneChannelsController(mockPubSubService, mockStorageService, mockPubSubPublishService)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -268,8 +273,8 @@ func TestHandlePushMessage_ErrorCustomMarshalingData(t *testing.T) {
 	mockStorageService.On("ProcessFile", "channels.json").Return([]*map[string]interface{}{
 		{
 			"payload": map[string]interface{}{
-				"BOPERS_WEB_CHANNEL": map[string]interface{}{
-					"WEB_CHANNEL_TYPE": "Public",
+				"BOPERS_PHONE_CHANNEL": map[string]interface{}{
+					"PHONE_NUMBER": "+562 2768 9200",
 				},
 			},
 		},
@@ -286,7 +291,7 @@ func TestHandlePushMessage_ErrorCustomMarshalingData(t *testing.T) {
 	// Restauramos la función original al final de la prueba
 	defer func() { customMarshalJSONFunc = originalCustomMarshalJSONFunc }()
 
-	controller := NewDataElectronicChannelsController(mockPubSubService, mockStorageService, mockPubSubPublishService)
+	controller := NewDataPhoneChannelsController(mockPubSubService, mockStorageService, mockPubSubPublishService)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -303,4 +308,5 @@ func TestHandlePushMessage_ErrorCustomMarshalingData(t *testing.T) {
 
 	mockPubSubService.AssertExpectations(t)
 	mockStorageService.AssertExpectations(t)
+	mockPubSubPublishService.AssertExpectations(t)
 }

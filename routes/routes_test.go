@@ -66,8 +66,8 @@ func TestSetupRoutes(t *testing.T) {
 	mockStorageService := new(MockStorageService)
 	mockPubSubPublishService := new(MockPubSubPublishService)
 
-	// Crear una instancia real de DataCustomerController con los mocks
-	electronicChannelController := controllers.NewDataElectronicChannelsController(mockPubSubService, mockStorageService, mockPubSubPublishService)
+	// Crear una instancia real de phoneChannelController con los mocks
+	phoneChannelController := controllers.NewDataPhoneChannelsController(mockPubSubService, mockStorageService, mockPubSubPublishService)
 
 	// Configurar el comportamiento esperado del mock PubSubService
 	mockPubSubService.On("ExtractStorageEvent", mock.Anything).Return(&services.StorageEvent{Name: "test.json"}, nil)
@@ -88,7 +88,7 @@ func TestSetupRoutes(t *testing.T) {
 	mockPubSubPublishService.On("PublishMessage", mock.Anything).Return(nil)
 
 	// Llamar a `SetupRoutes` para registrar las rutas con el controlador real
-	SetupRoutes(r, electronicChannelController)
+	SetupRoutes(r, phoneChannelController)
 
 	// Prueba de la ruta de HealthCheck
 	w := httptest.NewRecorder()
@@ -100,7 +100,7 @@ func TestSetupRoutes(t *testing.T) {
 
 	// Prueba de la ruta de /electronic/channels/retrieve
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodPost, "/service-channels/v1/api/electronic/channels/retrieve", bytes.NewBuffer([]byte(`{}`)))
+	req, _ = http.NewRequest(http.MethodPost, "/service-channels/v1/api/phone/channels/retrieve", bytes.NewBuffer([]byte(`{}`)))
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)

@@ -10,7 +10,7 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/models"
 )
 
-func TransformElectronicChannelData(data *map[string]interface{}) (*models.ElectronicChannels, error) {
+func TransformPhoneChannelData(data *map[string]interface{}) (*models.ElectronicChannels, error) {
 	payload, ok := (*data)["payload"].(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("invalid payload structure")
@@ -18,55 +18,34 @@ func TransformElectronicChannelData(data *map[string]interface{}) (*models.Elect
 
 	electronicChannels := &models.ElectronicChannels{}
 
-	// BOPERS_WEB_CHANNEL
-	if webChannelData, ok := payload["BOPERS_WEB_CHANNEL"].(map[string]interface{}); ok {
-		webChannel := models.WebChannel{}
-		if webChannelType, ok := webChannelData["WEB_CHANNEL_TYPE"].(string); ok {
-			webChannel.WebChannelType = webChannelType
+	// BOPERS_PHONE_CHANNEL
+	if phoneChannelData, ok := payload["BOPERS_PHONE_CHANNEL"].(map[string]interface{}); ok {
+		phoneChannel := models.PhoneChannel{}
+		if phoneAvailableServices, ok := phoneChannelData["PHONE_AVAILABLE_SERVICES"].(string); ok {
+			phoneChannel.PhoneAvailableServices = strings.Split(phoneAvailableServices, ",")
 		}
-		if webURLAddress, ok := webChannelData["WEB_URL_ADDRESS"].(string); ok {
-			webChannel.WebURLAddress = webURLAddress
+		if phoneNumber, ok := phoneChannelData["PHONE_NUMBER"].(string); ok {
+			phoneChannel.PhoneNumber = phoneNumber
 		}
-		if webAvailableServices, ok := webChannelData["WEB_AVAILABLE_SERVICES"].(string); ok {
-			webChannel.WebAvailableServices = strings.Split(webAvailableServices, ",")
+		if phoneAttentionHours, ok := phoneChannelData["PHONE_ATTENTION_HOURS"].(string); ok {
+			phoneChannel.PhoneAttentionHours = phoneAttentionHours
 		}
-		if webAttentionHours, ok := webChannelData["WEB_ATTENTION_HOURS"].(string); ok {
-			webChannel.WebAttentionHours = webAttentionHours
-		}
-		if webPlatformType, ok := webChannelData["WEB_PLATFORM_TYPE"].(string); ok {
-			webChannel.WebPlatformType = webPlatformType
-		}
-		electronicChannels.WebChannel = webChannel
+		electronicChannels.PhoneChannel = phoneChannel
 	}
 
-	// BOPERS_EMAIL_CHANNEL
-	if emailChannelData, ok := payload["BOPERS_EMAIL_CHANNEL"].(map[string]interface{}); ok {
-		emailChannel := models.EmailChannel{}
-		if emailAvailableServices, ok := emailChannelData["EMAIL_AVAILABLE_SERVICES"].(string); ok {
-			emailChannel.EmailAvailableServices = strings.Split(emailAvailableServices, ",")
+	// BOPERS_SMS_CHANNEL
+	if smsChannelData, ok := payload["BOPERS_SMS_CHANNEL"].(map[string]interface{}); ok {
+		smsChannel := models.SMSChannel{}
+		if smsAvailableServices, ok := smsChannelData["SMS_AVAILABLE_SERVICES"].(string); ok {
+			smsChannel.SMSAvailableServices = strings.Split(smsAvailableServices, ",")
 		}
-		if emailAddress, ok := emailChannelData["EMAIL_ADDRESS"].(string); ok {
-			emailChannel.EmailAddress = emailAddress
+		if smsAvailableServicesCode, ok := smsChannelData["SMS_AVAILABLE_SERVICES_CODE"].(string); ok {
+			smsChannel.SMSAvailableServicesCode = strings.Split(smsAvailableServicesCode, ",")
 		}
-		if emailAttentionHours, ok := emailChannelData["EMAIL_ATTENTION_HOURS"].(string); ok {
-			emailChannel.EmailAttentionHours = emailAttentionHours
+		if smsAttentionHours, ok := smsChannelData["SMS_ATTENTION_HOURS"].(string); ok {
+			smsChannel.SMSAttentionHours = smsAttentionHours
 		}
-		electronicChannels.EmailChannel = emailChannel
-	}
-
-	// BOPERS_SOCIAL_MEDIA_CHANNEL
-	if socialMediaChannelData, ok := payload["BOPERS_SOCIAL_MEDIA_CHANNEL"].(map[string]interface{}); ok {
-		socialMediaChannel := models.SocialMediaChannel{}
-		if socialMediaAvailableServices, ok := socialMediaChannelData["SOCIAL_MEDIA_AVAILABLE_SERVICES"].(string); ok {
-			socialMediaChannel.SocialMediaAvailableServices = strings.Split(socialMediaAvailableServices, ",")
-		}
-		if socialMediaAccount, ok := socialMediaChannelData["SOCIAL_MEDIA_ACCOUNT"].(string); ok {
-			socialMediaChannel.SocialMediaAccount = socialMediaAccount
-		}
-		if socialMediaAttentionHours, ok := socialMediaChannelData["SOCIAL_MEDIA_ATTENTION_HOURS"].(string); ok {
-			socialMediaChannel.SocialMediaAttentionHours = socialMediaAttentionHours
-		}
-		electronicChannels.SocialMediaChannel = socialMediaChannel
+		electronicChannels.SMSChannel = smsChannel
 	}
 
 	// Eliminar campos vacíos

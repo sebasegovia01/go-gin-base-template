@@ -81,7 +81,7 @@ func setupServer(
 	}
 
 	// Inicializar controladores
-	electronicChannelController := controllers.NewDataElectronicChannelsController(pubSubService, storageService, pubSubPublishService)
+	phoneChannelController := controllers.NewDataPhoneChannelsController(pubSubService, storageService, pubSubPublishService)
 
 	// Configurar rutas
 	r := gin.New()
@@ -93,7 +93,7 @@ func setupServer(
 		c.JSON(http.StatusNotFound, gin.H{"error": "Not Found"})
 	})
 
-	routes.SetupRoutes(r, electronicChannelController)
+	routes.SetupRoutes(r, phoneChannelController)
 
 	// Adaptar *gin.Engine a EngineRunner
 	return adaptGinToEngineRunner(r), nil

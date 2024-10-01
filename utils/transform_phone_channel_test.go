@@ -9,84 +9,63 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTransformElectronicChannelData(t *testing.T) {
-	// Caso 1: Estructura válida con todos los canales
+func TestTransformPhoneChannelData(t *testing.T) {
+	// Caso 1: Estructura válida con Phone y SMS Channels
 	data := map[string]interface{}{
 		"payload": map[string]interface{}{
-			"BOPERS_WEB_CHANNEL": map[string]interface{}{
-				"WEB_CHANNEL_TYPE":       "Public",
-				"WEB_URL_ADDRESS":        "https://example.com",
-				"WEB_AVAILABLE_SERVICES": "Banking",
-				"WEB_ATTENTION_HOURS":    "24/7",
-				"WEB_PLATFORM_TYPE":      "Mobile",
+			"BOPERS_PHONE_CHANNEL": map[string]interface{}{
+				"PHONE_AVAILABLE_SERVICES": "Asesoría a Clientes",
+				"PHONE_NUMBER":             "+562 2768 9200",
+				"PHONE_ATTENTION_HOURS":    "10:00:00 - 17:00:00",
 			},
-			"BOPERS_EMAIL_CHANNEL": map[string]interface{}{
-				"EMAIL_AVAILABLE_SERVICES": "Customer Support",
-				"EMAIL_ADDRESS":            "support@example.com",
-				"EMAIL_ATTENTION_HOURS":    "9am-5pm",
-			},
-			"BOPERS_SOCIAL_MEDIA_CHANNEL": map[string]interface{}{
-				"SOCIAL_MEDIA_AVAILABLE_SERVICES": "Messaging",
-				"SOCIAL_MEDIA_ACCOUNT":            "@example",
-				"SOCIAL_MEDIA_ATTENTION_HOURS":    "24/7",
+			"BOPERS_SMS_CHANNEL": map[string]interface{}{
+				"SMS_AVAILABLE_SERVICES":      "Apertura Productos, Cierre Productos",
+				"SMS_AVAILABLE_SERVICES_CODE": "03",
+				"SMS_ATTENTION_HOURS":         "09:00:00 - 15:00:00",
 			},
 		},
 	}
 
-	electronicChannels, err := utils.TransformElectronicChannelData(&data)
+	electronicChannels, err := utils.TransformPhoneChannelData(&data)
 	assert.NoError(t, err)
 	assert.NotNil(t, electronicChannels)
 
-	// Verificación de web channel
-	assert.Equal(t, "Public", electronicChannels.WebChannel.WebChannelType)
-	assert.Equal(t, "https://example.com", electronicChannels.WebChannel.WebURLAddress)
-	assert.Equal(t, "Banking", electronicChannels.WebChannel.WebAvailableServices)
-	assert.Equal(t, "24/7", electronicChannels.WebChannel.WebAttentionHours)
-	assert.Equal(t, "Mobile", electronicChannels.WebChannel.WebPlatformType)
+	// Verificación de Phone Channel
+	assert.Equal(t, []string{"Asesoría a Clientes"}, electronicChannels.PhoneChannel.PhoneAvailableServices)
+	assert.Equal(t, "+562 2768 9200", electronicChannels.PhoneChannel.PhoneNumber)
+	assert.Equal(t, "10:00:00 - 17:00:00", electronicChannels.PhoneChannel.PhoneAttentionHours)
 
-	// Verificación de email channel
-	assert.Equal(t, "Customer Support", electronicChannels.EmailChannel.EmailAvailableServices)
-	assert.Equal(t, "support@example.com", electronicChannels.EmailChannel.EmailAddress)
-	assert.Equal(t, "9am-5pm", electronicChannels.EmailChannel.EmailAttentionHours)
-
-	// Verificación de social media channel
-	assert.Equal(t, "Messaging", electronicChannels.SocialMediaChannel.SocialMediaAvailableServices)
-	assert.Equal(t, "@example", electronicChannels.SocialMediaChannel.SocialMediaAccount)
-	assert.Equal(t, "24/7", electronicChannels.SocialMediaChannel.SocialMediaAttentionHours)
+	// Verificación de SMS Channel
+	assert.Equal(t, []string{"Apertura Productos", "Cierre Productos"}, electronicChannels.SMSChannel.SMSAvailableServices)
+	assert.Equal(t, []string{"03"}, electronicChannels.SMSChannel.SMSAvailableServicesCode)
+	assert.Equal(t, "09:00:00 - 15:00:00", electronicChannels.SMSChannel.SMSAttentionHours)
 
 	// Caso 2: Payload vacío o con estructura inválida
 	invalidData := map[string]interface{}{
 		"payload": "invalid structure",
 	}
-	_, err = utils.TransformElectronicChannelData(&invalidData)
+	_, err = utils.TransformPhoneChannelData(&invalidData)
 	assert.Error(t, err)
 	assert.Equal(t, "invalid payload structure", err.Error())
 
 	// Caso 3: Estructura válida pero con algunos canales vacíos
 	partialData := map[string]interface{}{
 		"payload": map[string]interface{}{
-			"BOPERS_WEB_CHANNEL": map[string]interface{}{
-				"WEB_CHANNEL_TYPE": "Public",
-			},
-			"BOPERS_EMAIL_CHANNEL": map[string]interface{}{
-				"EMAIL_ADDRESS": "support@example.com",
+			"BOPERS_PHONE_CHANNEL": map[string]interface{}{
+				"PHONE_NUMBER": "+562 2768 9200",
 			},
 		},
 	}
-	electronicChannels, err = utils.TransformElectronicChannelData(&partialData)
+	electronicChannels, err = utils.TransformPhoneChannelData(&partialData)
 	assert.NoError(t, err)
 	assert.NotNil(t, electronicChannels)
 
-	// Verificación de web channel parcial
-	assert.Equal(t, "Public", electronicChannels.WebChannel.WebChannelType)
-	assert.Empty(t, electronicChannels.WebChannel.WebURLAddress) // Campo vacío
+	// Verificación de Phone Channel parcial
+	assert.Equal(t, "+562 2768 9200", electronicChannels.PhoneChannel.PhoneNumber)
+	assert.Nil(t, electronicChannels.PhoneChannel.PhoneAvailableServices) // Campo vacío
 
-	// Verificación de email channel parcial
-	assert.Equal(t, "support@example.com", electronicChannels.EmailChannel.EmailAddress)
-	assert.Empty(t, electronicChannels.EmailChannel.EmailAvailableServices) // Campo vacío
-
-	// Verificación de social media channel vacío
-	assert.Nil(t, electronicChannels.SocialMediaChannel)
+	// Verificación de SMS Channel vacío
+	assert.Nil(t, electronicChannels.SMSChannel)
 }
 
 func TestCustomMarshalJSON(t *testing.T) {

@@ -12,28 +12,28 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/utils"
 )
 
-type DataElectronicChannelsController struct {
+type DataPhoneChannelsController struct {
 	pubSubService        services.PubSubServiceInterface
 	storageService       services.StorageServiceInterface
 	pubSubPublishService services.PubSubPublishServiceInterface
 }
 
-func NewDataElectronicChannelsController(
+func NewDataPhoneChannelsController(
 	pubSubService services.PubSubServiceInterface,
 	storageService services.StorageServiceInterface,
 	pubSubPublishService services.PubSubPublishServiceInterface,
-) *DataElectronicChannelsController {
-	return &DataElectronicChannelsController{
+) *DataPhoneChannelsController {
+	return &DataPhoneChannelsController{
 		pubSubService:        pubSubService,
 		storageService:       storageService,
 		pubSubPublishService: pubSubPublishService,
 	}
 }
 
-var transformElectronicChannelDataFunc = utils.TransformElectronicChannelData
+var transformPhonechannelDataFunc = utils.TransformPhoneChannelData
 var customMarshalJSONFunc = utils.CustomMarshalJSON
 
-func (c *DataElectronicChannelsController) HandlePushMessage(ctx *gin.Context) {
+func (c *DataPhoneChannelsController) HandlePushMessage(ctx *gin.Context) {
 	// Loguear el cuerpo de la solicitud
 	body, _ := io.ReadAll(ctx.Request.Body)
 	log.Printf("Received request body: %s", string(body))
@@ -61,7 +61,7 @@ func (c *DataElectronicChannelsController) HandlePushMessage(ctx *gin.Context) {
 	for _, channelData := range channelDataList {
 		log.Printf("channelData before transformation: %+v", channelData)
 
-		transformedChannel, err := transformElectronicChannelDataFunc(channelData)
+		transformedChannel, err := transformPhonechannelDataFunc(channelData)
 		if err != nil {
 			log.Printf("Error transforming channel data: %v", err)
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error transforming channel data: " + err.Error()})
@@ -93,7 +93,7 @@ func (c *DataElectronicChannelsController) HandlePushMessage(ctx *gin.Context) {
 
 	// respuesta final del servicio
 	ctx.JSON(http.StatusOK, gin.H{
-		"status":     "Electronic channel data processed and published successfully",
+		"status":     "Phone channel data processed and published successfully",
 		"data_count": len(channelDataList),
 	})
 }
