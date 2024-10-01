@@ -10,7 +10,6 @@ import (
 	"github.com/sebasegovia01/base-template-go-gin/models"
 )
 
-// TransformElectronicChannelData transforms the incoming data for electronic channels into the corresponding models
 func TransformElectronicChannelData(data *map[string]interface{}) (*models.ElectronicChannels, error) {
 	payload, ok := (*data)["payload"].(map[string]interface{})
 	if !ok {
@@ -18,12 +17,10 @@ func TransformElectronicChannelData(data *map[string]interface{}) (*models.Elect
 	}
 
 	electronicChannels := &models.ElectronicChannels{}
-	webChannel := models.WebChannel{}
-	emailChannel := models.EmailChannel{}
-	socialMediaChannel := models.SocialMediaChannel{}
 
 	// BOPERS_WEB_CHANNEL
 	if webChannelData, ok := payload["BOPERS_WEB_CHANNEL"].(map[string]interface{}); ok {
+		webChannel := models.WebChannel{}
 		if webChannelType, ok := webChannelData["WEB_CHANNEL_TYPE"].(string); ok {
 			webChannel.WebChannelType = webChannelType
 		}
@@ -31,7 +28,7 @@ func TransformElectronicChannelData(data *map[string]interface{}) (*models.Elect
 			webChannel.WebURLAddress = webURLAddress
 		}
 		if webAvailableServices, ok := webChannelData["WEB_AVAILABLE_SERVICES"].(string); ok {
-			webChannel.WebAvailableServices = webAvailableServices
+			webChannel.WebAvailableServices = strings.Split(webAvailableServices, ",")
 		}
 		if webAttentionHours, ok := webChannelData["WEB_ATTENTION_HOURS"].(string); ok {
 			webChannel.WebAttentionHours = webAttentionHours
@@ -39,12 +36,14 @@ func TransformElectronicChannelData(data *map[string]interface{}) (*models.Elect
 		if webPlatformType, ok := webChannelData["WEB_PLATFORM_TYPE"].(string); ok {
 			webChannel.WebPlatformType = webPlatformType
 		}
+		electronicChannels.WebChannel = webChannel
 	}
 
 	// BOPERS_EMAIL_CHANNEL
 	if emailChannelData, ok := payload["BOPERS_EMAIL_CHANNEL"].(map[string]interface{}); ok {
+		emailChannel := models.EmailChannel{}
 		if emailAvailableServices, ok := emailChannelData["EMAIL_AVAILABLE_SERVICES"].(string); ok {
-			emailChannel.EmailAvailableServices = emailAvailableServices
+			emailChannel.EmailAvailableServices = strings.Split(emailAvailableServices, ",")
 		}
 		if emailAddress, ok := emailChannelData["EMAIL_ADDRESS"].(string); ok {
 			emailChannel.EmailAddress = emailAddress
@@ -52,12 +51,14 @@ func TransformElectronicChannelData(data *map[string]interface{}) (*models.Elect
 		if emailAttentionHours, ok := emailChannelData["EMAIL_ATTENTION_HOURS"].(string); ok {
 			emailChannel.EmailAttentionHours = emailAttentionHours
 		}
+		electronicChannels.EmailChannel = emailChannel
 	}
 
 	// BOPERS_SOCIAL_MEDIA_CHANNEL
 	if socialMediaChannelData, ok := payload["BOPERS_SOCIAL_MEDIA_CHANNEL"].(map[string]interface{}); ok {
+		socialMediaChannel := models.SocialMediaChannel{}
 		if socialMediaAvailableServices, ok := socialMediaChannelData["SOCIAL_MEDIA_AVAILABLE_SERVICES"].(string); ok {
-			socialMediaChannel.SocialMediaAvailableServices = socialMediaAvailableServices
+			socialMediaChannel.SocialMediaAvailableServices = strings.Split(socialMediaAvailableServices, ",")
 		}
 		if socialMediaAccount, ok := socialMediaChannelData["SOCIAL_MEDIA_ACCOUNT"].(string); ok {
 			socialMediaChannel.SocialMediaAccount = socialMediaAccount
@@ -65,21 +66,11 @@ func TransformElectronicChannelData(data *map[string]interface{}) (*models.Elect
 		if socialMediaAttentionHours, ok := socialMediaChannelData["SOCIAL_MEDIA_ATTENTION_HOURS"].(string); ok {
 			socialMediaChannel.SocialMediaAttentionHours = socialMediaAttentionHours
 		}
-	}
-
-	// Assign channels to the main struct if not empty
-	if webChannel != (models.WebChannel{}) {
-		electronicChannels.WebChannel = webChannel
-	}
-	if emailChannel != (models.EmailChannel{}) {
-		electronicChannels.EmailChannel = emailChannel
-	}
-	if socialMediaChannel != (models.SocialMediaChannel{}) {
 		electronicChannels.SocialMediaChannel = socialMediaChannel
 	}
 
-	// Remove empty fields from the entire struct
-	electronicChannelsJSON, _ := CustomMarshalJSON(electronicChannels)
+	// Eliminar campos vacíos
+	electronicChannelsJSON, _ := json.Marshal(electronicChannels)
 	json.Unmarshal(electronicChannelsJSON, electronicChannels)
 
 	return electronicChannels, nil

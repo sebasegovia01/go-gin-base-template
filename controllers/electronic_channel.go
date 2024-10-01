@@ -70,8 +70,7 @@ func (c *DataElectronicChannelsController) HandlePushMessage(ctx *gin.Context) {
 
 		log.Printf("Transformed channel data: %+v", transformedChannel)
 
-		// Test with regular json.Marshal instead of CustomMarshalJSON
-		channelJSON, err := json.Marshal(transformedChannel)
+		channelJSON, err := customMarshalJSONFunc(transformedChannel)
 		if err != nil {
 			log.Printf("Error marshaling channel data: %v", err)
 			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error marshaling channel data: " + err.Error()})
