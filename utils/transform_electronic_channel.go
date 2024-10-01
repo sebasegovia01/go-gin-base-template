@@ -85,7 +85,7 @@ func TransformElectronicChannelData(data *map[string]interface{}) (*models.Elect
 	return electronicChannels, nil
 }
 
-func omitEmptyFields(v reflect.Value) interface{} {
+func OmitEmptyFields(v reflect.Value) interface{} {
 	if !v.IsValid() {
 		return nil
 	}
@@ -114,7 +114,7 @@ func omitEmptyFields(v reflect.Value) interface{} {
 			if jsonName == "" {
 				jsonName = structField.Name
 			}
-			fieldValue := omitEmptyFields(field)
+			fieldValue := OmitEmptyFields(field)
 			if fieldValue != nil {
 				result[jsonName] = fieldValue
 			}
@@ -133,7 +133,7 @@ func omitEmptyFields(v reflect.Value) interface{} {
 				continue // Omitir valores vacíos o nil
 			}
 
-			fieldValue := omitEmptyFields(value)
+			fieldValue := OmitEmptyFields(value)
 			if fieldValue == nil {
 				continue // Omitir valores vacíos
 			}
@@ -151,7 +151,7 @@ func omitEmptyFields(v reflect.Value) interface{} {
 		result := make([]interface{}, 0, v.Len())
 		for i := 0; i < v.Len(); i++ {
 			elem := v.Index(i)
-			fieldValue := omitEmptyFields(elem)
+			fieldValue := OmitEmptyFields(elem)
 			if fieldValue != nil {
 				result = append(result, fieldValue)
 			}
@@ -161,14 +161,14 @@ func omitEmptyFields(v reflect.Value) interface{} {
 		}
 		return result
 	default:
-		if isEmptyValue(v) {
+		if IsEmptyValue(v) {
 			return nil
 		}
 		return v.Interface()
 	}
 }
 
-func isEmptyValue(v reflect.Value) bool {
+func IsEmptyValue(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
 		return v.Len() == 0
@@ -188,7 +188,7 @@ func isEmptyValue(v reflect.Value) bool {
 		}
 		// Check if all fields of the struct are empty
 		for i := 0; i < v.NumField(); i++ {
-			if !isEmptyValue(v.Field(i)) {
+			if !IsEmptyValue(v.Field(i)) {
 				return false
 			}
 		}
@@ -198,7 +198,7 @@ func isEmptyValue(v reflect.Value) bool {
 }
 
 func CustomMarshalJSON(v interface{}) ([]byte, error) {
-	result := omitEmptyFields(reflect.ValueOf(v))
+	result := OmitEmptyFields(reflect.ValueOf(v))
 	if result == nil {
 		return json.Marshal(struct{}{})
 	}
