@@ -7,9 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(r *gin.Engine, dataCustomerController *controllers.DataCustomerController) {
+func SetupRoutes(r *gin.Engine, electronicChannelController *controllers.DataElectronicChannelsController) {
 
-	api := r.Group("/customer-data-retrieval/v1/api")
+	api := r.Group("/service-channels/v1/api")
 
 	// Health check route
 	healthController := controllers.NewHealthController()
@@ -17,9 +17,9 @@ func SetupRoutes(r *gin.Engine, dataCustomerController *controllers.DataCustomer
 
 	// Customer route
 	{
-		customers := api.Group("/customers")
+		customers := api.Group("/electronic/channels")
 		{
-			customers.POST("/retrieve", dataCustomerController.HandlePushMessage)
+			customers.POST("/retrieve", electronicChannelController.HandlePushMessage)
 		}
 	}
 }

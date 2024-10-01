@@ -67,7 +67,7 @@ func TestSetupRoutes(t *testing.T) {
 	mockPubSubPublishService := new(MockPubSubPublishService)
 
 	// Crear una instancia real de DataCustomerController con los mocks
-	dataCustomerController := controllers.NewDataCustomerController(mockPubSubService, mockStorageService, mockPubSubPublishService)
+	electronicChannelController := controllers.NewDataElectronicChannelsController(mockPubSubService, mockStorageService, mockPubSubPublishService)
 
 	// Configurar el comportamiento esperado del mock PubSubService
 	mockPubSubService.On("ExtractStorageEvent", mock.Anything).Return(&services.StorageEvent{Name: "test.json"}, nil)
@@ -76,9 +76,9 @@ func TestSetupRoutes(t *testing.T) {
 	mockStorageService.On("ProcessFile", "test.json").Return([]*map[string]interface{}{
 		{
 			"payload": map[string]interface{}{
-				"BOPERS_MAE_NAT_BSC": map[string]interface{}{
-					"PEMNB_GLS_NOM_PEL": "John",
-					"PEMNB_GLS_APL_PAT": "Doe",
+				"BOPERS_SOCIAL_MEDIA_CHANNEL": map[string]interface{}{
+					"SOCIAL_MEDIA_AVAILABLE_SERVICES": "dummy",
+					"SOCIAL_MEDIA_ACCOUNT":            "DMY",
 				},
 			},
 		},
@@ -88,19 +88,19 @@ func TestSetupRoutes(t *testing.T) {
 	mockPubSubPublishService.On("PublishMessage", mock.Anything).Return(nil)
 
 	// Llamar a `SetupRoutes` para registrar las rutas con el controlador real
-	SetupRoutes(r, dataCustomerController)
+	SetupRoutes(r, electronicChannelController)
 
 	// Prueba de la ruta de HealthCheck
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/customer-data-retrieval/v1/api/health", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/service-channels/v1/api/health", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.JSONEq(t, `{"status":"UP","message":"API is healthy"}`, w.Body.String())
 
-	// Prueba de la ruta de /customers/retrieve
+	// Prueba de la ruta de /electronic/channels/retrieve
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodPost, "/customer-data-retrieval/v1/api/customers/retrieve", bytes.NewBuffer([]byte(`{}`)))
+	req, _ = http.NewRequest(http.MethodPost, "/service-channels/v1/api/electronic/channels/retrieve", bytes.NewBuffer([]byte(`{}`)))
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
