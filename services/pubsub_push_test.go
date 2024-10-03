@@ -52,6 +52,9 @@ func TestExtractStorageEvent_Success(t *testing.T) {
 			PublishTime  string            `json:"publishTime"`
 			PublishTime2 string            `json:"publish_time,omitempty"`
 		}{
+			Attributes: map[string]string{
+				"eventType": "OBJECT_FINALIZE", // Asegúrate de que el eventType sea válido
+			},
 			Data: base64.StdEncoding.EncodeToString([]byte(`{"bucket": "my-bucket", "name": "my-object"}`)),
 			ID:   "test-id",
 		},
@@ -76,6 +79,46 @@ func TestExtractStorageEvent_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "my-bucket", result.Bucket)
 	assert.Equal(t, "my-object", result.Name)
+}
+
+func TestExtractStorageEvent_UnsupportedEventType(t *testing.T) {
+	// Simular el cuerpo del mensaje PubSub con un eventType no soportado (por ejemplo, OBJECT_DELETE)
+	pubSubMessage := PubSubMessage{
+		Message: struct {
+			Attributes   map[string]string `json:"attributes,omitempty"`
+			Data         string            `json:"data"`
+			ID           string            `json:"messageId"`
+			MessageID    string            `json:"message_id,omitempty"`
+			OrderingKey  *string           `json:"orderingKey,omitempty"`
+			PublishTime  string            `json:"publishTime"`
+			PublishTime2 string            `json:"publish_time,omitempty"`
+		}{
+			Attributes: map[string]string{
+				"eventType": "OBJECT_DELETE", // Tipo de evento no soportado
+			},
+			Data: base64.StdEncoding.EncodeToString([]byte(`{"bucket": "my-bucket", "name": "my-object"}`)),
+			ID:   "test-id",
+		},
+		DeliveryAttempt: new(int),
+	}
+
+	messageBytes, _ := json.Marshal(pubSubMessage)
+	body := io.NopCloser(bytes.NewReader(messageBytes))
+
+	// Crear el servicio con credenciales válidas
+	cfg := &config.Config{
+		GCPCredentials: &google.Credentials{
+			ProjectID: "test-project",
+		},
+	}
+	service, _ := NewPubSubService(cfg)
+
+	// Llamar al método
+	result, err := service.ExtractStorageEvent(body)
+
+	// Aserciones
+	assert.NoError(t, err) // No debe haber error
+	assert.Nil(t, result)  // El resultado debe ser nil
 }
 
 // Simular un lector que falla en la lectura del cuerpo
@@ -139,6 +182,9 @@ func TestExtractStorageEvent_Base64DecodeError(t *testing.T) {
 			PublishTime  string            `json:"publishTime"`
 			PublishTime2 string            `json:"publish_time,omitempty"`
 		}{
+			Attributes: map[string]string{
+				"eventType": "OBJECT_FINALIZE", // Asegúrate de que el eventType sea válido
+			},
 			Data: "invalid-base64-data",
 			ID:   "test-id",
 		},
@@ -176,8 +222,8 @@ func TestExtractStorageEvent_WithAttributes(t *testing.T) {
 			PublishTime2 string            `json:"publish_time,omitempty"`
 		}{
 			Attributes: map[string]string{
-				"key1": "value1",
-				"key2": "value2",
+				"eventType": "OBJECT_FINALIZE",
+				"eventTime": "2024-09-30T18:20:43.506911Z",
 			},
 			Data: base64.StdEncoding.EncodeToString([]byte(`{"bucket": "my-bucket", "name": "my-object"}`)),
 			ID:   "test-id",
@@ -216,6 +262,10 @@ func TestExtractStorageEvent_EmptyBucketError(t *testing.T) {
 			PublishTime  string            `json:"publishTime"`
 			PublishTime2 string            `json:"publish_time,omitempty"`
 		}{
+			Attributes: map[string]string{
+				"eventType": "OBJECT_FINALIZE",
+				"eventTime": "2024-09-30T18:20:43.506911Z",
+			},
 			Data: base64.StdEncoding.EncodeToString([]byte(`{"bucket": "", "name": "my-object"}`)),
 			ID:   "test-id",
 		},
@@ -253,6 +303,10 @@ func TestExtractStorageEvent_EmptyNameError(t *testing.T) {
 			PublishTime  string            `json:"publishTime"`
 			PublishTime2 string            `json:"publish_time,omitempty"`
 		}{
+			Attributes: map[string]string{
+				"eventType": "OBJECT_FINALIZE",
+				"eventTime": "2024-09-30T18:20:43.506911Z",
+			},
 			Data: base64.StdEncoding.EncodeToString([]byte(`{"bucket": "my-bucket", "name": ""}`)),
 			ID:   "test-id",
 		},
@@ -290,6 +344,10 @@ func TestExtractStorageEvent_UnmarshalStorageEventError(t *testing.T) {
 			PublishTime  string            `json:"publishTime"`
 			PublishTime2 string            `json:"publish_time,omitempty"`
 		}{
+			Attributes: map[string]string{
+				"eventType": "OBJECT_FINALIZE",
+				"eventTime": "2024-09-30T18:20:43.506911Z",
+			},
 			Data: base64.StdEncoding.EncodeToString([]byte(`{"invalid-json"`)), // JSON inválido
 			ID:   "test-id",
 		},
@@ -327,6 +385,10 @@ func TestExtractStorageEvent_QueryUnescapeError(t *testing.T) {
 			PublishTime  string            `json:"publishTime"`
 			PublishTime2 string            `json:"publish_time,omitempty"`
 		}{
+			Attributes: map[string]string{
+				"eventType": "OBJECT_FINALIZE",
+				"eventTime": "2024-09-30T18:20:43.506911Z",
+			},
 			Data: base64.StdEncoding.EncodeToString([]byte(`{"bucket": "my-bucket", "name": "%invalid%name"}`)),
 			ID:   "test-id",
 		},

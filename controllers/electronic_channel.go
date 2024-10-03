@@ -46,6 +46,16 @@ func (c *DataElectronicChannelsController) HandlePushMessage(ctx *gin.Context) {
 		return
 	}
 
+	// Si el storageEvent es nil, significa que se ha ignorado el mensaje (eventType no soportado)
+	if storageEvent == nil {
+		log.Printf("Storage event ignored due to unsupported eventType")
+		ctx.JSON(http.StatusOK, gin.H{
+			"status":      "Event ignored",
+			"description": "Event type is not supported, no action taken",
+		})
+		return
+	}
+
 	log.Printf("Storage event data: %s", storageEvent)
 
 	// obtenemos la data
