@@ -63,6 +63,14 @@ func (s *PubSubService) ExtractStorageEvent(body io.Reader) (*StorageEvent, erro
 		log.Printf("Message attributes: %v", message.Message.Attributes)
 	}
 
+	// Filtrar por eventType (solo OBJECT_FINALIZE y OBJECT_UPDATE)
+	eventType := message.Message.Attributes["eventType"]
+	if eventType != "OBJECT_FINALIZE" && eventType != "OBJECT_UPDATE" {
+		// Log the event and return nil without error to avoid a Pub/Sub retry loop
+		log.Printf("Unsupported event type: %s, ignoring the message.", eventType)
+		return nil, nil // Esto indica que el mensaje se procesó "correctamente" aunque no haremos nada con él
+	}
+
 	// Decode the base64 encoded data
 	decodedData, err := base64.StdEncoding.DecodeString(message.Message.Data)
 	if err != nil {

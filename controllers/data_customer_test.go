@@ -23,7 +23,10 @@ type MockPubSubService struct {
 
 func (m *MockPubSubService) ExtractStorageEvent(body io.Reader) (*services.StorageEvent, error) {
 	args := m.Called(body)
-	return args.Get(0).(*services.StorageEvent), args.Error(1)
+	if args.Get(0) != nil {
+		return args.Get(0).(*services.StorageEvent), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 type MockStorageService struct {
@@ -226,4 +229,40 @@ func TestHandlePushMessage(t *testing.T) {
 			mockPubSubPublishService.AssertExpectations(t)
 		})
 	}
+}
+
+func TestHandlePushMessage_UnsupportedEventType(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	// Mocks
+	mockPubSubService := new(MockPubSubService)
+	mockStorageService := new(MockStorageService)
+	mockPubSubPublishService := new(MockPubSubPublishService)
+
+	// Simulamos que el evento fue ignorado retornando nil sin error
+	mockPubSubService.On("ExtractStorageEvent", mock.Anything).Return(nil, nil)
+
+	controller := NewDataCustomerController(mockPubSubService, mockStorageService, mockPubSubPublishService)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest(http.MethodPost, "/", bytes.NewBufferString("{}"))
+
+	// Ejecutar la función del controlador
+	controller.HandlePushMessage(c)
+
+	// Verificar el código de estado HTTP
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Verificar el contenido de la respuesta
+	var response gin.H
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "Event ignored", response["status"])
+	assert.Equal(t, "Event type is not supported, no action taken", response["description"])
+
+	// Asegurarse de que se llamaron las expectativas de los mocks
+	mockPubSubService.AssertExpectations(t)
+	mockStorageService.AssertNotCalled(t, "ProcessFile", mock.Anything)
+	mockPubSubPublishService.AssertNotCalled(t, "PublishMessage", mock.Anything)
 }
